@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Database, FileVideo, GitBranch, Layers, LinkIcon, Lock, Plus, Save, Trash2, Upload, type LucideIcon } from "lucide-react";
+import { Database, FileVideo, GitBranch, Layers, LinkIcon, Lock, Plus, Save, Search, Trash2, Upload, type LucideIcon } from "lucide-react";
 import { AdminMapEditor } from "@/components/AdminMapEditor";
 import { RelationBulkEditor } from "@/components/RelationBulkEditor";
 import type { LevelTest, MediaAsset, Source, Trick, TrickMapPosition, TrickRelation } from "@/lib/types";
@@ -28,11 +28,14 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
   const [activeSection, setActiveSection] = useState<AdminSection>("tricks");
   const [videoMessage, setVideoMessage] = useState("動画ファイルを選ぶと、種別・サイズ・同意チェックの検証を行います。");
   const [saveMessage, setSaveMessage] = useState("技名、別名、基礎技、応用技、説明、挿入動画をまとめて編集できます。");
-  const [relationMessage, setRelationMessage] = useState("基礎技・応用技は技名を改行またはカンマ区切りで入力してください。");
+  const [relationMessage, setRelationMessage] = useState("登録済みの技から複数選択できます。選択すると相関図の線にも反映されます。");
 
   const selected = useMemo(() => drafts.find((trick) => trick.id === selectedId) ?? drafts[0], [drafts, selectedId]);
   const trickById = useMemo(() => new Map(drafts.map((trick) => [trick.id, trick])), [drafts]);
-  const trickByName = useMemo(() => new Map(drafts.map((trick) => [trick.name, trick])), [drafts]);
+  const relationOptions = useMemo(
+    () => (selected ? drafts.filter((trick) => trick.id !== selected.id).sort((a, b) => a.level - b.level || a.name.localeCompare(b.name, "ja")) : []),
+    [drafts, selected]
+  );
 
   const selectedBaseRelations = useMemo(
     () => (selected ? relationDrafts.filter((relation) => relation.toTrickId === selected.id && isLearningRelation(relation)) : []),
@@ -184,19 +187,10 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
     setSaveMessage(mediaResponse.ok ? "技データ、相関、挿入動画を保存しました。" : `動画パスの保存に失敗しました: ${mediaResult.error ?? "unknown error"}`);
   }
 
-  function updateNamedRelations(kind: "base" | "advanced", value: string) {
+  function updateRelationIds(kind: "base" | "advanced", targetIds: string[]) {
     if (!selected) return;
 
-    const names = splitList(value);
-    const invalid = names.filter((name) => {
-      const trick = trickByName.get(name);
-      return !trick || trick.id === selected.id;
-    });
-    const targetIds = names
-      .map((name) => trickByName.get(name))
-      .filter((trick): trick is Trick => Boolean(trick))
-      .filter((trick) => trick.id !== selected.id)
-      .map((trick) => trick.id);
+    const validIds = Array.from(new Set(targetIds.filter((id) => id !== selected.id && trickById.has(id))));
 
     setRelationDrafts((current) => {
       const kept =
@@ -204,19 +198,32 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
           ? current.filter((relation) => !(relation.toTrickId === selected.id && isLearningRelation(relation)))
           : current.filter((relation) => !(relation.fromTrickId === selected.id && relation.type === "progression"));
 
-      const additions = targetIds.map((id, index) => ({
-        id: `draft-relation-${kind}-${selected.id}-${id}-${index}`,
-        fromTrickId: kind === "base" ? id : selected.id,
-        toTrickId: kind === "base" ? selected.id : id,
-        type: kind === "base" ? "prerequisite" : "progression",
-        note: "管理画面で編集中",
-        strength: 3
-      }) satisfies TrickRelation);
+      const additions = validIds.map((id, index) => {
+        const fromTrickId = kind === "base" ? id : selected.id;
+        const toTrickId = kind === "base" ? selected.id : id;
+        const existing = current.find(
+          (relation) =>
+            relation.fromTrickId === fromTrickId &&
+            relation.toTrickId === toTrickId &&
+            (kind === "base" ? isLearningRelation(relation) : relation.type === "progression")
+        );
+
+        return (
+          existing ?? {
+            id: `draft-relation-${kind}-${selected.id}-${id}-${index}`,
+            fromTrickId,
+            toTrickId,
+            type: kind === "base" ? "prerequisite" : "progression",
+            note: "管理画面で選択",
+            strength: 3
+          }
+        ) satisfies TrickRelation;
+      });
 
       return [...kept, ...additions];
     });
 
-    setRelationMessage(invalid.length ? `未登録または自分自身の技名があります: ${invalid.join(", ")}` : "基礎技・応用技を更新しました。保存ボタンで反映します。");
+    setRelationMessage(`${kind === "base" ? "基礎技" : "応用技"}を${validIds.length}件選択しました。保存するとDBへ反映します。`);
   }
 
   function updateVideoPaths(value: string) {
@@ -279,8 +286,8 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
     setVideoMessage(response.ok ? `アップロードしました: ${result.storagePath}` : `アップロード失敗: ${result.error ?? "unknown error"}`);
   }
 
-  const selectedBaseNames = selectedBaseRelations.map((relation) => trickById.get(relation.fromTrickId)?.name).filter((name): name is string => Boolean(name));
-  const selectedAdvancedNames = selectedAdvancedRelations.map((relation) => trickById.get(relation.toTrickId)?.name).filter((name): name is string => Boolean(name));
+  const selectedBaseIds = selectedBaseRelations.map((relation) => relation.fromTrickId);
+  const selectedAdvancedIds = selectedAdvancedRelations.map((relation) => relation.toTrickId);
   const selectedVideoPaths = selectedVideos.map((asset) => asset.storagePath);
 
   return (
@@ -408,8 +415,20 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
 
                 <div className="grid gap-4">
                   <Panel icon={GitBranch} title="基礎技・応用技">
-                    <RelationTextArea label="基礎技" value={selectedBaseNames.join("\n")} onChange={(value) => updateNamedRelations("base", value)} />
-                    <RelationTextArea label="応用技" value={selectedAdvancedNames.join("\n")} onChange={(value) => updateNamedRelations("advanced", value)} />
+                    <RelationPicker
+                      label="基礎技"
+                      description="この技の前に練習しておきたい技"
+                      options={relationOptions}
+                      selectedIds={selectedBaseIds}
+                      onChange={(ids) => updateRelationIds("base", ids)}
+                    />
+                    <RelationPicker
+                      label="応用技"
+                      description="この技の次に練習する派生技"
+                      options={relationOptions}
+                      selectedIds={selectedAdvancedIds}
+                      onChange={(ids) => updateRelationIds("advanced", ids)}
+                    />
                     <p className="mt-3 rounded bg-paper px-3 py-2 text-xs font-semibold text-graphite/72">{relationMessage}</p>
                   </Panel>
 
@@ -547,16 +566,110 @@ function ListField({ label, values, onChange }: { label: string; values: string[
   );
 }
 
-function RelationTextArea({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+function RelationPicker({
+  label,
+  description,
+  options,
+  selectedIds,
+  onChange
+}: {
+  label: string;
+  description: string;
+  options: Trick[];
+  selectedIds: string[];
+  onChange: (ids: string[]) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const optionById = useMemo(() => new Map(options.map((option) => [option.id, option])), [options]);
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const selectedOptions = selectedIds.map((id) => optionById.get(id)).filter((option): option is Trick => Boolean(option));
+  const visibleOptions = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return options
+      .filter((option) => {
+        if (!normalizedQuery) return true;
+        const searchable = [option.name, option.family, option.levelCategory, ...option.aliases, ...option.tags].join(" ").toLowerCase();
+        return searchable.includes(normalizedQuery);
+      })
+      .slice(0, 80);
+  }, [options, query]);
+
+  function toggle(id: string, checked: boolean) {
+    if (checked) {
+      onChange(selectedIds.includes(id) ? selectedIds : [...selectedIds, id]);
+      return;
+    }
+    onChange(selectedIds.filter((selectedId) => selectedId !== id));
+  }
+
   return (
-    <label className="mt-3 block first:mt-0">
-      <span className="mb-2 block text-sm font-bold text-ink">{label}</span>
-      <textarea
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="min-h-24 w-full rounded border border-ink/14 bg-paper px-3 py-2 text-sm leading-6 outline-none focus:border-pine"
-      />
-    </label>
+    <section className="mt-4 rounded border border-ink/10 bg-paper p-3 first:mt-0">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-black text-ink">{label}</h3>
+          <p className="mt-1 text-xs font-semibold leading-5 text-graphite/70">{description}</p>
+        </div>
+        <span className="shrink-0 rounded bg-white px-2 py-1 text-xs font-black text-pine">{selectedOptions.length}件</span>
+      </div>
+
+      <div className="mt-3 min-h-8">
+        {selectedOptions.length ? (
+          <div className="flex flex-wrap gap-1.5">
+            {selectedOptions.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => toggle(option.id, false)}
+                className="rounded border border-pine/20 bg-white px-2 py-1 text-xs font-black text-pine transition hover:border-coral hover:text-coral"
+                aria-label={`${option.name}を${label}から外す`}
+              >
+                {option.name}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="rounded bg-white px-2 py-1.5 text-xs font-semibold text-graphite/58">未選択</p>
+        )}
+      </div>
+
+      <label className="mt-3 flex h-10 items-center gap-2 rounded border border-ink/12 bg-white px-3 text-sm focus-within:border-pine">
+        <Search aria-hidden className="size-4 shrink-0 text-graphite/42" />
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="技名・系統・タグで検索"
+          className="h-full min-w-0 flex-1 bg-transparent outline-none"
+        />
+      </label>
+
+      <div className="mt-3 grid max-h-64 gap-1.5 overflow-auto pr-1">
+        {visibleOptions.length ? (
+          visibleOptions.map((option) => (
+            <label
+              key={option.id}
+              className={`grid cursor-pointer grid-cols-[auto_1fr] gap-2 rounded border px-2.5 py-2 text-sm transition ${
+                selectedSet.has(option.id) ? "border-pine bg-skywash text-pine" : "border-ink/8 bg-white text-graphite hover:border-pine"
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={selectedSet.has(option.id)}
+                onChange={(event) => toggle(option.id, event.target.checked)}
+                className="mt-0.5 size-4 accent-pine"
+              />
+              <span className="min-w-0">
+                <span className="block truncate font-bold">{option.name}</span>
+                <span className="mt-0.5 block truncate text-xs opacity-70">
+                  Lv.{option.level || "-"} / {option.family}
+                </span>
+              </span>
+            </label>
+          ))
+        ) : (
+          <p className="rounded bg-white px-3 py-2 text-xs font-semibold text-graphite/62">一致する技がありません。</p>
+        )}
+      </div>
+    </section>
   );
 }
 

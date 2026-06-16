@@ -14,10 +14,11 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { GitBranch, RotateCcw, Save } from "lucide-react";
+import { makeLevelColumnLayoutMap } from "@/lib/map-layout";
 import type { RelationType, Trick, TrickMapPosition, TrickRelation } from "@/lib/types";
 import { relationLabel } from "@/lib/utils";
 
-const editorLayoutStorageKey = "dd-acro-editor-map-layout";
+const editorLayoutStorageKey = "dd-acro-editor-map-layout-v2";
 
 const edgeColors: Record<RelationType, string> = {
   prerequisite: "#24514a",
@@ -55,7 +56,7 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode 
     return new Map(families.map((family, index) => [family, familyColors[index % familyColors.length]]));
   }, [visibleTricks]);
 
-  const autoNodes = useMemo(() => makeNodes(visibleTricks, mapPositions, familyByName), [familyByName, mapPositions, visibleTricks]);
+  const autoNodes = useMemo(() => makeNodes(visibleTricks, relations, mapPositions, familyByName), [familyByName, mapPositions, relations, visibleTricks]);
 
   const edges: Edge[] = useMemo(
     () =>
@@ -81,12 +82,12 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode 
     if (prototypeMode) {
       const stored = readStoredPositions();
       if (stored.length) {
-        setNodes(makeNodes(visibleTricks, stored, familyByName));
+        setNodes(makeNodes(visibleTricks, relations, stored, familyByName));
         return;
       }
     }
     setNodes(autoNodes);
-  }, [autoNodes, familyByName, prototypeMode, visibleTricks]);
+  }, [autoNodes, familyByName, prototypeMode, relations, visibleTricks]);
 
   useEffect(() => {
     setLayoutText(exportLayout(nodes, trickById));
@@ -123,7 +124,7 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode 
   }
 
   function resetAutoLayout() {
-    setNodes(makeNodes(visibleTricks, [], familyByName));
+    setNodes(makeNodes(visibleTricks, relations, [], familyByName));
     setMessage("自動整列に戻しました。保存すると公式配置として反映されます。");
   }
 
@@ -145,7 +146,7 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode 
         return;
       }
 
-      setNodes(makeNodes(visibleTricks, positionsFromText, familyByName));
+      setNodes(makeNodes(visibleTricks, relations, positionsFromText, familyByName));
       setMessage(`JSONから${positionsFromText.length}件の配置を反映しました。`);
     } catch {
       setMessage("JSONの形式を確認してください。");
@@ -226,46 +227,35 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode 
   );
 }
 
-function makeNodes(tricks: Trick[], positions: TrickMapPosition[], familyByName: Map<string, string>): Node[] {
+function makeNodes(tricks: Trick[], relations: TrickRelation[], positions: TrickMapPosition[], familyByName: Map<string, string>): Node[] {
   const positionById = new Map(positions.map((position) => [position.trickId, position]));
-  const groups = new Map<number, Trick[]>();
-  for (const trick of tricks) {
-    const group = groups.get(trick.level) ?? [];
-    group.push(trick);
-    groups.set(trick.level, group);
-  }
-  const levelIndexByLevel = new Map(Array.from(groups.keys()).sort((a, b) => a - b).map((level, index) => [level, index]));
-  const indexInLevel = new Map<string, number>();
-  for (const [, group] of groups) {
-    group.forEach((trick, index) => indexInLevel.set(trick.id, index));
-  }
+  const autoPositionById = makeLevelColumnLayoutMap(tricks, relations);
 
-  return tricks.map((trick) => {
-    const color = familyByName.get(trick.family) ?? "#24514a";
-    const autoPosition = {
-      x: (levelIndexByLevel.get(trick.level) ?? 0) * 260,
-      y: (indexInLevel.get(trick.id) ?? 0) * 104
-    };
-    const saved = positionById.get(trick.id);
+  return tricks
+    .map((trick) => {
+      const color = familyByName.get(trick.family) ?? "#24514a";
+      const autoPosition = autoPositionById.get(trick.id) ?? { x: 0, y: 0 };
+      const saved = positionById.get(trick.id);
 
-    return {
-      id: trick.id,
-      type: "default",
-      position: saved ? { x: saved.x, y: saved.y } : autoPosition,
-      data: { label: `${trick.name}\nLv.${trick.level} / ${trick.family}` },
-      style: {
-        width: 206,
-        borderColor: color,
-        background: "#ffffff",
-        borderWidth: 2,
-        borderRadius: 6,
-        color: "#172026",
-        fontSize: 12,
-        fontWeight: 800,
-        whiteSpace: "pre-line"
-      }
-    } satisfies Node;
-  });
+      return {
+        id: trick.id,
+        type: "default",
+        position: saved ? { x: saved.x, y: saved.y } : autoPosition,
+        data: { label: `${trick.name}\nLv.${trick.level} / ${trick.family}` },
+        style: {
+          width: 206,
+          borderColor: color,
+          background: "#ffffff",
+          borderWidth: 2,
+          borderRadius: 6,
+          color: "#172026",
+          fontSize: 12,
+          fontWeight: 800,
+          whiteSpace: "pre-line"
+        }
+      } satisfies Node;
+    })
+    .sort((a, b) => a.position.x - b.position.x || a.position.y - b.position.y);
 }
 
 function exportLayout(nodes: Node[], trickById: Map<string, Trick>) {

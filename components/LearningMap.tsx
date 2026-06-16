@@ -17,11 +17,12 @@ import {
 } from "@xyflow/react";
 import { CheckCircle2, Circle, RotateCcw, Sparkles, Trophy } from "lucide-react";
 import "@xyflow/react/dist/style.css";
+import { makeLevelColumnLayoutMap } from "@/lib/map-layout";
 import type { RelationType, Trick, TrickMapPosition, TrickRelation } from "@/lib/types";
 import { relationLabel } from "@/lib/utils";
 
 const storageKey = "dd-acro-mastered-tricks";
-export const editorLayoutStorageKey = "dd-acro-editor-map-layout";
+export const editorLayoutStorageKey = "dd-acro-editor-map-layout-v2";
 
 const edgeStyles: Record<RelationType, { color: string; label: string }> = {
   prerequisite: { color: "#24514a", label: "前提" },
@@ -136,6 +137,8 @@ export function LearningMap({
     return new Map([...official, ...localEditorPositions.map((position) => [position.trickId, position] as const)]);
   }, [allowLocalEditorLayout, localEditorPositions, mapPositions]);
 
+  const autoPositionByTrickId = useMemo(() => makeLevelColumnLayoutMap(visibleTricks, graphRelations), [graphRelations, visibleTricks]);
+
   const toggleMastered = useCallback((id: string, checked: boolean) => {
     setMasteredIds((current) => {
       const next = new Set(current);
@@ -146,23 +149,11 @@ export function LearningMap({
   }, []);
 
   const nodes: SkillTreeNode[] = useMemo(() => {
-    const groups = new Map<number, Trick[]>();
-    for (const trick of visibleTricks) {
-      const group = groups.get(trick.level) ?? [];
-      group.push(trick);
-      groups.set(trick.level, group);
-    }
-
-    const levels = Array.from(groups.keys()).sort((a, b) => a - b);
-    return levels.flatMap((level, levelIndex) => {
-      const group = groups.get(level) ?? [];
-      return group.map((trick, index) => ({
+    return visibleTricks
+      .map((trick) => ({
         id: trick.id,
-        type: "skill",
-        position: positionByTrickId.get(trick.id) ?? {
-          x: levelIndex * 260,
-          y: index * 104
-        },
+        type: "skill" as const,
+        position: positionByTrickId.get(trick.id) ?? autoPositionByTrickId.get(trick.id) ?? { x: 0, y: 0 },
         data: {
           name: trick.name,
           slug: trick.slug,
@@ -172,9 +163,9 @@ export function LearningMap({
           checked: masteredIds.has(trick.id),
           onToggle: toggleMastered
         }
-      }));
-    });
-  }, [familyStyles, masteredIds, positionByTrickId, toggleMastered, visibleTricks]);
+      }))
+      .sort((a, b) => a.position.x - b.position.x || a.position.y - b.position.y);
+  }, [autoPositionByTrickId, familyStyles, masteredIds, positionByTrickId, toggleMastered, visibleTricks]);
 
   const edges: Edge[] = useMemo(
     () =>
