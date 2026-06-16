@@ -224,8 +224,8 @@ function parseRelations(text: string, trickByName: Map<string, Trick>) {
     .filter((line) => line && !line.startsWith("#"))
     .forEach((line, index) => {
       const parts = line.split("|").map((part) => part.trim());
-      const endpoints = parts[0]?.split(/\s*(?:->|→|=>)\s*/);
-      if (!endpoints || endpoints.length !== 2) {
+      const endpoints = parseEndpoints(parts[0]);
+      if (!endpoints) {
         errors.push(`${index + 1}行目: 矢印が必要です`);
         return;
       }
@@ -270,4 +270,21 @@ function parseRelationType(value: string | undefined): RelationType {
   if (normalized === "変化" || normalized === "variation" || normalized === "similar") return "variation";
   if (normalized === "連携" || normalized === "combo" || normalized === "link") return "combo";
   return "progression";
+}
+
+function parseEndpoints(value: string | undefined) {
+  if (!value) return null;
+  const spacedMatch = value.match(/\s+(?:->|→|=>)\s+/);
+  if (spacedMatch?.index !== undefined) {
+    return [value.slice(0, spacedMatch.index).trim(), value.slice(spacedMatch.index + spacedMatch[0].length).trim()];
+  }
+
+  for (const marker of ["->", "=>"]) {
+    const index = value.indexOf(marker);
+    if (index > -1) {
+      return [value.slice(0, index).trim(), value.slice(index + marker.length).trim()];
+    }
+  }
+
+  return null;
 }
