@@ -38,6 +38,15 @@ export default async function TrickDetailPage({ params }: { params: Promise<{ sl
           </div>
           <h1 className="break-words text-3xl font-black tracking-normal text-ink sm:text-4xl">{trick.name}</h1>
           <p className="mt-4 text-base leading-7 text-graphite/80 sm:text-lg sm:leading-8">{trick.summary}</p>
+          <div className="mt-5">
+            <Link
+              href={`/map?trick=${encodeURIComponent(trick.slug)}`}
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded bg-pine px-4 text-sm font-black text-white transition hover:bg-ink sm:w-auto"
+            >
+              <GitBranch aria-hidden className="size-4" />
+              相関図で見る
+            </Link>
+          </div>
           <div className="mt-5 grid gap-4 border-y border-ink/8 py-5 sm:mt-6 sm:grid-cols-2">
             <MetricDots label="難度" value={trick.difficulty} />
             <MetricDots label="危険度" value={trick.riskLevel} />

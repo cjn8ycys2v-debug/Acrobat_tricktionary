@@ -15,6 +15,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { GitBranch, RotateCcw, Save } from "lucide-react";
 import { makeLevelColumnLayoutMap } from "@/lib/map-layout";
+import { sortFamilies } from "@/lib/taxonomy";
 import type { RelationType, Trick, TrickMapPosition, TrickRelation } from "@/lib/types";
 import { relationLabel } from "@/lib/utils";
 
@@ -52,7 +53,7 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode 
   }, [relations, tricks]);
 
   const familyByName = useMemo(() => {
-    const families = Array.from(new Set(visibleTricks.map((trick) => trick.family))).sort((a, b) => a.localeCompare(b, "ja"));
+    const families = sortFamilies(Array.from(new Set(visibleTricks.map((trick) => trick.family))));
     return new Map(families.map((family, index) => [family, familyColors[index % familyColors.length]]));
   }, [visibleTricks]);
 

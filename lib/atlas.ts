@@ -1,4 +1,5 @@
 import atlasData from "@/data/atlas-data.json";
+import { sortFamilies } from "@/lib/taxonomy";
 import type { AtlasData, LevelTest, Source, Trick, TrickMapPosition, TrickRelation } from "@/lib/types";
 
 const data = atlasData as AtlasData;
@@ -61,13 +62,16 @@ function slugFor(index: number, name: string) {
   return ascii ? `t${String(index + 1).padStart(3, "0")}-${ascii}` : `t${String(index + 1).padStart(3, "0")}`;
 }
 
-function deriveFamily(name: string, category: string) {
-  if (/(倒立|ブリッジ|前転|後転|チェアー|プッシュアップ|肘)/.test(name)) return "倒立・床基礎";
-  if (/(ウインド|トーマス|エリオ|スワイプ|1990|2000|C\.C\.|コイン|ボム)/.test(name)) return "ブレイキン";
-  if (/(ツイスト|ひねり|フル|コーク|ロデオ|クロスアウト|Aトラックス)/.test(name)) return "ひねり";
-  if (/(宙|フリップ|ウェブスター|ゲイナー|バッファ|ブランディー|ロケット)/.test(name)) return "空中回転";
-  if (/(バタフライ|エアリアル|スクート|ライズ|540|ガンビ|マカコ)/.test(name)) return "トリッキング";
-  return category;
+function deriveFamily(name: string) {
+  if (/(オリジナル技|空中系2つ以上の連続技)/.test(name)) return "連続・創作";
+  if (/(ツイスト|ひねり|フル|コーク|ロデオ|クロスアウト|Aトラックス|1\.5回ひねり|フルハイパー|溜め背面)/.test(name)) return "ひねり";
+  if (/(ウインド|トーマス|エリオ|スワイプ|1990|2000|C\.C\.|コイン|ボム)/.test(name)) return "ブレイキン・床回転";
+  if (/(倒立|ブリッジ|前転|後転|チェアー|プッシュアップ|肘|首抜き|背倒立|跳ね起き|ワーム|ドルフィン)/.test(name)) return "倒立・床基礎";
+  if (/(バタフライ|エアリアル|スクート|ライズ|540|ガンビ|マカコ|ムーンキック|フラッシュキック|ヘリコプテイロ|ルーザー)/.test(name)) return "トリッキング";
+  if (/(宙|フリップ|ウェブスター|ゲイナー|バッファ|ブランディー|ロケット|背面|横転|ロン横|カートサイド|カートアラビアン|反り宙|ジーザス|スワン|アックス)/.test(name)) return "空中回転";
+  if (/(側転|ロンダート|^ロンバク$|^バク転$|連続バク転|ハンドスプリング|^カート$|片手ロンダート|かぶき|旋風脚)/.test(name)) return "側方・反発";
+  if (/(前回り受け身|フロントスウィープ|バックスウィープ|^1歩$|スイング|振り上げ|屈伸ジャンプ|ブロッキング|パンチ|キャタピー|片足しゃがみ|ニューヨーク|サルフット|ドンキー|シフト|バックドンキー|ダブルシフト|ラビット|てんつく|ヘベルサオン|レインボー|ハローバック)/.test(name)) return "基礎ムーブ";
+  return "その他";
 }
 
 function deriveAxis(name: string) {
@@ -100,7 +104,7 @@ function deriveRopeContext(level: number, name: string) {
 }
 
 function deriveTags(name: string, level: number, category: string, family: string) {
-  const tags = new Set<string>([category, family, `Lv.${level}`]);
+  const tags = new Set<string>([family, `Lv.${level}`]);
   if (level <= 3) tags.add("基礎");
   if (level >= 7) tags.add("空中系");
   if (/(倒立|肘|チェアー)/.test(name)) tags.add("倒立");
@@ -130,7 +134,7 @@ export function getAllTricks(): Trick[] {
     for (const name of level.trickNames) {
       if (seen.has(name)) continue;
 
-      const family = deriveFamily(name, level.category);
+      const family = deriveFamily(name);
       const axis = deriveAxis(name);
       const trick: Trick = {
         id: `trick-${String(index + 1).padStart(3, "0")}`,
@@ -229,7 +233,7 @@ export function getFeaturedTricks() {
 
 export function getFilterOptions() {
   return {
-    families: Array.from(new Set(allTricks.map((trick) => trick.family))).sort(),
+    families: sortFamilies(Array.from(new Set(allTricks.map((trick) => trick.family)))),
     axes: Array.from(new Set(allTricks.map((trick) => trick.axis))).sort(),
     takeoffs: Array.from(new Set(allTricks.map((trick) => trick.takeoff))).sort(),
     landings: Array.from(new Set(allTricks.map((trick) => trick.landing))).sort(),

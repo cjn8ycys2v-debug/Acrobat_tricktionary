@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Background,
   Controls,
@@ -18,6 +18,7 @@ import {
 import { CheckCircle2, Circle, RotateCcw, Search, Sparkles, Trophy } from "lucide-react";
 import "@xyflow/react/dist/style.css";
 import { makeLevelColumnLayoutMap } from "@/lib/map-layout";
+import { sortFamilies } from "@/lib/taxonomy";
 import type { RelationType, Trick, TrickMapPosition, TrickRelation } from "@/lib/types";
 import { relationLabel } from "@/lib/utils";
 
@@ -80,6 +81,7 @@ export function LearningMap({
   const [selectedFamily, setSelectedFamily] = useState(allFamilyFilter);
   const [relationTypeFilters, setRelationTypeFilters] = useState<RelationType[]>(relationTypeOrder);
   const [query, setQuery] = useState("");
+  const initialFocusApplied = useRef(false);
 
   useEffect(() => {
     const updateViewportMode = () => setIsCompactViewport(window.innerWidth < 640);
@@ -132,8 +134,22 @@ export function LearningMap({
     return tricks.filter((trick) => ids.has(trick.id));
   }, [allGraphRelations, tricks]);
 
+  useEffect(() => {
+    if (initialFocusApplied.current || !allGraphTricks.length) return;
+    const params = new URLSearchParams(window.location.search);
+    const focusValue = (params.get("trick") ?? params.get("q") ?? "").trim();
+    initialFocusApplied.current = true;
+    if (!focusValue) return;
+
+    const focused = allGraphTricks.find((trick) => trick.slug === focusValue || trick.id === focusValue || trick.name === focusValue);
+    setSelectedFamily(allFamilyFilter);
+    setRelationTypeFilters(relationTypeOrder);
+    setQuery(focused?.name ?? focusValue);
+    if (focused) setActiveNodeId(focused.id);
+  }, [allGraphTricks]);
+
   const familyStyles = useMemo(() => {
-    const families = Array.from(new Set(allGraphTricks.map((trick) => trick.family))).sort((a, b) => a.localeCompare(b, "ja"));
+    const families = sortFamilies(Array.from(new Set(allGraphTricks.map((trick) => trick.family))));
     return new Map(families.map((family, index) => [family, familyPalette[index % familyPalette.length]]));
   }, [allGraphTricks]);
 
