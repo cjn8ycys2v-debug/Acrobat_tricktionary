@@ -18,11 +18,14 @@ type Props = {
   prototypeMode: boolean;
 };
 
+type AdminSection = "tricks" | "relations" | "layout" | "status";
+
 export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAssets, sources, prototypeMode }: Props) {
   const [drafts, setDrafts] = useState(tricks);
   const [relationDrafts, setRelationDrafts] = useState(relations);
   const [mediaDrafts, setMediaDrafts] = useState(mediaAssets);
   const [selectedId, setSelectedId] = useState(drafts[0]?.id ?? "");
+  const [activeSection, setActiveSection] = useState<AdminSection>("tricks");
   const [videoMessage, setVideoMessage] = useState("動画ファイルを選ぶと、種別・サイズ・同意チェックの検証を行います。");
   const [saveMessage, setSaveMessage] = useState("技名、別名、基礎技、応用技、説明、挿入動画をまとめて編集できます。");
   const [relationMessage, setRelationMessage] = useState("基礎技・応用技は技名を改行またはカンマ区切りで入力してください。");
@@ -299,6 +302,8 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
         <AdminMetric label="動画" value={mediaDrafts.length} tone="graphite" />
       </div>
 
+      <AdminSectionTabs activeSection={activeSection} onChange={setActiveSection} />
+
       <div className="grid gap-4 lg:grid-cols-[280px_1fr] lg:gap-5">
         <aside className="rounded border border-ink/10 bg-white p-3 shadow-sm sm:p-4">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-black text-ink">
@@ -333,7 +338,7 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
         </aside>
 
         <main className="grid gap-4 lg:gap-5">
-          {selected ? (
+          {selected && activeSection === "tricks" ? (
             <section className="rounded border border-ink/10 bg-white p-4 shadow-sm sm:p-5">
               <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
@@ -422,10 +427,15 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
             </section>
           ) : null}
 
-          <RelationBulkEditor tricks={drafts} relations={relationDrafts} onRelationsChange={setRelationDrafts} prototypeMode={prototypeMode} />
+          {activeSection === "relations" ? (
+            <RelationBulkEditor tricks={drafts} relations={relationDrafts} onRelationsChange={setRelationDrafts} prototypeMode={prototypeMode} />
+          ) : null}
 
-          <AdminMapEditor tricks={drafts} relations={relationDrafts} mapPositions={mapPositions} prototypeMode={prototypeMode} />
+          {activeSection === "layout" ? (
+            <AdminMapEditor tricks={drafts} relations={relationDrafts} mapPositions={mapPositions} prototypeMode={prototypeMode} />
+          ) : null}
 
+          {activeSection === "status" ? (
           <section className="grid gap-4 lg:grid-cols-3 lg:gap-5">
             <Panel icon={LinkIcon} title="選択中の相関">
               <RelationPreview relations={relationDrafts} tricks={drafts} selectedId={selected?.id} />
@@ -442,8 +452,39 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
               </p>
             </Panel>
           </section>
+          ) : null}
         </main>
       </div>
+    </div>
+  );
+}
+
+function AdminSectionTabs({ activeSection, onChange }: { activeSection: AdminSection; onChange: (section: AdminSection) => void }) {
+  const sections: Array<{ id: AdminSection; label: string; description: string }> = [
+    { id: "tricks", label: "技を編集", description: "名前・説明・動画" },
+    { id: "relations", label: "繋がり", description: "相関の一覧・一括指定" },
+    { id: "layout", label: "配置", description: "公式スキルツリー" },
+    { id: "status", label: "確認", description: "相関・動画・出典" }
+  ];
+
+  return (
+    <div className="mb-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+      {sections.map((section) => {
+        const isActive = activeSection === section.id;
+        return (
+          <button
+            key={section.id}
+            type="button"
+            onClick={() => onChange(section.id)}
+            className={`rounded border p-3 text-left transition ${
+              isActive ? "border-pine bg-skywash text-pine shadow-sm" : "border-ink/10 bg-white text-graphite hover:border-pine"
+            }`}
+          >
+            <span className="block text-sm font-black">{section.label}</span>
+            <span className="mt-1 block text-xs font-semibold opacity-75">{section.description}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }
