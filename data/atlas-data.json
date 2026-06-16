@@ -1,0 +1,759 @@
+{
+  "sources": [
+    {
+      "id": "shimamotor-acro-level-test",
+      "title": "島本アクロレッスン レベルテスト",
+      "kind": "pdf",
+      "url": "https://www.dropbox.com/scl/fi/5efdb2q2boi3ripstgymy/.pdf?rlkey=0gt6arv6rv5srkidk21y0u7ev&st=bszy3coz&e=1&dl=0",
+      "showByDefault": false
+    }
+  ],
+  "levels": [
+    {
+      "level": 1,
+      "category": "倒立系",
+      "title": "体を動かせるようになろう",
+      "passCondition": "記載技をすべてクリア",
+      "sourceId": "shimamotor-acro-level-test",
+      "trickNames": [
+        "ブリッジ30秒",
+        "前回り受け身",
+        "首抜き後転",
+        "フロントスウィープ",
+        "バックスウィープ",
+        "1歩",
+        "前転",
+        "後転",
+        "背倒立",
+        "スイング（Jステップ）",
+        "振り上げ＋ジャンプ",
+        "屈伸ジャンプ",
+        "ブロッキング",
+        "パンチ（瞬間ジャンプ）"
+      ]
+    },
+    {
+      "level": 2,
+      "category": "倒立系",
+      "title": "縄の中で出来る技を習得して筋力をつけよう",
+      "passCondition": "記載技をすべてクリア",
+      "sourceId": "shimamotor-acro-level-test",
+      "trickNames": [
+        "キャタピー",
+        "チェアー30秒",
+        "片足しゃがみ立ち10秒",
+        "ニューヨーク",
+        "サルフット",
+        "プッシュアップ",
+        "ベビースワイプ",
+        "ドンキー",
+        "シフト",
+        "C.C."
+      ]
+    },
+    {
+      "level": 3,
+      "category": "倒立系",
+      "title": "手で支えて回転しよう",
+      "passCondition": "記載技をすべてクリア",
+      "sourceId": "shimamotor-acro-level-test",
+      "trickNames": [
+        "前方ブリッジ→起き上がり",
+        "立ちブリッジ",
+        "後方ブリッジ",
+        "側転",
+        "倒立歩行5歩",
+        "倒立前転",
+        "伸膝後転",
+        "ロンダート",
+        "跳ね起き",
+        "倒立",
+        "ワーム",
+        "片手側転"
+      ]
+    },
+    {
+      "level": 4,
+      "category": "倒立系",
+      "title": "空中回転の感覚を養おう",
+      "passCondition": "記載技をすべてクリア",
+      "sourceId": "shimamotor-acro-level-test",
+      "trickNames": [
+        "バタフライ",
+        "エアリアル",
+        "倒立歩行10歩",
+        "スクート",
+        "ハンドスプリング",
+        "かぶき",
+        "旋風脚",
+        "跳び前転",
+        "カート",
+        "片手ロンダート",
+        "連続バク転"
+      ]
+    },
+    {
+      "level": 5,
+      "category": "倒立系",
+      "title": "瞬発力を身に着けよう",
+      "passCondition": "記載技をすべてクリア",
+      "sourceId": "shimamotor-acro-level-test",
+      "trickNames": [
+        "ドルフィン",
+        "3点倒立→倒立",
+        "後転倒立",
+        "倒立旋回2周",
+        "側宙",
+        "バク転"
+      ]
+    },
+    {
+      "level": 6,
+      "category": "小技発展",
+      "title": "定番アクロ",
+      "passCondition": "以下の技から6個クリアで合格",
+      "sourceId": "shimamotor-acro-level-test",
+      "trickNames": [
+        "バックドンキー",
+        "ダブルシフト",
+        "ロンバク",
+        "ラビット",
+        "ライズ",
+        "てんつく",
+        "側転ツイスト",
+        "エアツイガンビ",
+        "540",
+        "サイドスワイプ",
+        "ヘベルサオン",
+        "ガンビ",
+        "レインボー",
+        "ハローバック",
+        "マカコ",
+        "コインドロップ",
+        "ボム",
+        "スワイプス"
+      ]
+    },
+    {
+      "level": 7,
+      "category": "空中系基礎",
+      "title": "空中系基礎",
+      "passCondition": "以下の技から3個クリアで合格",
+      "sourceId": "shimamotor-acro-level-test",
+      "trickNames": [
+        "ロン宙",
+        "前宙",
+        "ウェブスター",
+        "背面フリップ",
+        "サイドフリップ",
+        "バタフライツイスト",
+        "カートサイド",
+        "ロン横",
+        "スタン宙",
+        "ゲイナー",
+        "バッファ",
+        "ウインドミル",
+        "女側宙",
+        "横転",
+        "背面"
+      ]
+    },
+    {
+      "level": 8,
+      "category": "空中系応用",
+      "title": "空中系応用",
+      "passCondition": "以下の技から3個クリアで合格",
+      "sourceId": "shimamotor-acro-level-test",
+      "trickNames": [
+        "スワン宙",
+        "ルーザー",
+        "アックスウェブスター",
+        "バク転→バク宙",
+        "フラッシュキック",
+        "伸身バッファ",
+        "ロンバク宙",
+        "テンポ宙",
+        "エアリアルツイスト",
+        "ブランディー",
+        "猫宙",
+        "カートアラビアン",
+        "反り宙",
+        "ムーンキック",
+        "ムーンフリップ",
+        "ロケットボーイ",
+        "イリュージョンツイスト",
+        "ヘリコプテイロ",
+        "トーマス",
+        "エリオ",
+        "ベビーウインド",
+        "前宙ひねり",
+        "逆宙"
+      ]
+    },
+    {
+      "level": 9,
+      "category": "空中回転1回ひねり",
+      "title": "空中回転1回ひねり",
+      "passCondition": "以下の技から2個クリアで合格",
+      "sourceId": "shimamotor-acro-level-test",
+      "trickNames": [
+        "コークスクリュー",
+        "トリプルフラッシュキック",
+        "ロン宙1回ひねり",
+        "ロデオ",
+        "ジーザスフリップ",
+        "クロスアウト",
+        "カートフルツイスト",
+        "スクートフルツイスト",
+        "フルロール",
+        "タッチダウンライズ",
+        "溜め背面",
+        "ラップフルツイスト",
+        "Aトラックス",
+        "1990",
+        "2000"
+      ]
+    },
+    {
+      "level": 10,
+      "category": "空中回転1回ひねり＋α",
+      "title": "空中回転1回ひねり＋α",
+      "passCondition": "以下の技から2個クリアで合格",
+      "sourceId": "shimamotor-acro-level-test",
+      "trickNames": [
+        "オリジナル技",
+        "1.5回ひねり",
+        "フルハイパー",
+        "空中系2つ以上の連続技"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "from": "倒立歩行5歩",
+      "to": "倒立歩行10歩",
+      "type": "progression",
+      "strength": 5,
+      "note": "移動距離を伸ばす"
+    },
+    {
+      "from": "ブリッジ30秒",
+      "to": "前方ブリッジ→起き上がり",
+      "type": "prerequisite",
+      "strength": 4,
+      "note": "肩と背中の可動域を作る"
+    },
+    {
+      "from": "立ちブリッジ",
+      "to": "後方ブリッジ",
+      "type": "progression",
+      "strength": 4,
+      "note": "後方への倒れ込みに慣れる"
+    },
+    {
+      "from": "前転",
+      "to": "倒立前転",
+      "type": "prerequisite",
+      "strength": 3,
+      "note": "回転の受け身を先に固める"
+    },
+    {
+      "from": "後転",
+      "to": "伸膝後転",
+      "type": "progression",
+      "strength": 3,
+      "note": "膝を伸ばした後方回転へ発展"
+    },
+    {
+      "from": "側転",
+      "to": "ロンダート",
+      "type": "prerequisite",
+      "strength": 5,
+      "note": "倒立経由の横回転を反発へつなげる"
+    },
+    {
+      "from": "ロンダート",
+      "to": "ロンバク",
+      "type": "progression",
+      "strength": 5,
+      "note": "ロンダートから後方技へ接続"
+    },
+    {
+      "from": "ロンダート",
+      "to": "ロン宙",
+      "type": "progression",
+      "strength": 5,
+      "note": "ロンダートの反発を空中回転に使う"
+    },
+    {
+      "from": "バク転",
+      "to": "バク転→バク宙",
+      "type": "progression",
+      "strength": 5,
+      "note": "連続後方技への入り口"
+    },
+    {
+      "from": "ロンバク",
+      "to": "ロンバク宙",
+      "type": "progression",
+      "strength": 5,
+      "note": "ロンバクの反発から宙返りへ"
+    },
+    {
+      "from": "バタフライ",
+      "to": "バタフライツイスト",
+      "type": "progression",
+      "strength": 4,
+      "note": "水平軌道にひねりを加える"
+    },
+    {
+      "from": "エアリアル",
+      "to": "エアリアルツイスト",
+      "type": "progression",
+      "strength": 4,
+      "note": "側方系の空中姿勢にひねりを追加"
+    },
+    {
+      "from": "スクート",
+      "to": "スクートフルツイスト",
+      "type": "progression",
+      "strength": 4,
+      "note": "スクートの入りからフルツイストへ"
+    },
+    {
+      "from": "ライズ",
+      "to": "タッチダウンライズ",
+      "type": "progression",
+      "strength": 4,
+      "note": "支持点を使ったライズ発展"
+    },
+    {
+      "from": "コインドロップ",
+      "to": "ウインドミル",
+      "type": "prerequisite",
+      "strength": 3,
+      "note": "床への落とし込みと回転感覚を共有"
+    },
+    {
+      "from": "ウインドミル",
+      "to": "ベビーウインド",
+      "type": "variation",
+      "strength": 3,
+      "note": "同系統の床回転バリエーション"
+    },
+    {
+      "from": "ロン宙",
+      "to": "ロン宙1回ひねり",
+      "type": "progression",
+      "strength": 5,
+      "note": "宙返りに1回ひねりを追加"
+    },
+    {
+      "from": "フラッシュキック",
+      "to": "トリプルフラッシュキック",
+      "type": "progression",
+      "strength": 4,
+      "note": "連続性と高さを強化"
+    },
+    {
+      "from": "側転",
+      "to": "側転ツイスト",
+      "type": "variation",
+      "strength": 3,
+      "note": "側転系のひねり変化"
+    },
+    {
+      "from": "側転ツイスト",
+      "to": "カートフルツイスト",
+      "type": "progression",
+      "strength": 4,
+      "note": "カート系フルツイストへ発展"
+    },
+    {
+      "from": "カートサイド",
+      "to": "カートアラビアン",
+      "type": "progression",
+      "strength": 4,
+      "note": "カート系からアラビアンへつなぐ"
+    },
+    {
+      "from": "540",
+      "to": "コークスクリュー",
+      "type": "progression",
+      "strength": 4,
+      "note": "蹴り上げとひねりの発展"
+    },
+    {
+      "from": "背倒立",
+      "to": "前転",
+      "type": "prerequisite",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "背倒立",
+      "to": "前回り受け身",
+      "type": "prerequisite",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "背倒立",
+      "to": "倒立",
+      "type": "prerequisite",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "背倒立",
+      "to": "後転",
+      "type": "prerequisite",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "前転",
+      "to": "前回り受け身",
+      "type": "progression",
+      "strength": 2,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "前転",
+      "to": "かぶき",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "前転",
+      "to": "跳び前転",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "かぶき",
+      "to": "ウェブスター",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "ハンドスプリング",
+      "to": "ウェブスター",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "ウェブスター",
+      "to": "反り宙",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "女側宙",
+      "to": "反り宙",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "倒立",
+      "to": "倒立前転",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "倒立",
+      "to": "後転倒立",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "倒立",
+      "to": "ハンドスプリング",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "倒立",
+      "to": "側転",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "倒立",
+      "to": "ドンキー",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "ブリッジ30秒",
+      "to": "跳ね起き",
+      "type": "prerequisite",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "ブリッジ30秒",
+      "to": "バク転",
+      "type": "prerequisite",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "跳ね起き",
+      "to": "ハンドスプリング",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "ドンキー",
+      "to": "ワーム",
+      "type": "progression",
+      "strength": 2,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "ドンキー",
+      "to": "バク転",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "バク転",
+      "to": "連続バク転",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "連続バク転",
+      "to": "ロンバク",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "バク転",
+      "to": "スタン宙",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "ロンバク",
+      "to": "ロン宙",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "ロン宙",
+      "to": "ロン横",
+      "type": "variation",
+      "strength": 2,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "ロン宙",
+      "to": "テンポ宙",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "猫宙",
+      "to": "ロン宙",
+      "type": "progression",
+      "strength": 2,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "前宙",
+      "to": "猫宙",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "前宙",
+      "to": "前宙ひねり",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "前宙ひねり",
+      "to": "カートフルツイスト",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "側転",
+      "to": "片手側転",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "片手側転",
+      "to": "片手ロンダート",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "片手ロンダート",
+      "to": "ロンダート",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "側転",
+      "to": "カート",
+      "type": "variation",
+      "strength": 2,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "カート",
+      "to": "バタフライツイスト",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "カート",
+      "to": "エアリアルツイスト",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "カート",
+      "to": "カートフルツイスト",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "バタフライツイスト",
+      "to": "カートフルツイスト",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "エアリアルツイスト",
+      "to": "コークスクリュー",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "バタフライツイスト",
+      "to": "エアリアルツイスト",
+      "type": "variation",
+      "strength": 2,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "旋風脚",
+      "to": "ライズ",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "ライズ",
+      "to": "サイドスワイプ",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "ライズ",
+      "to": "てんつく",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "ライズ",
+      "to": "バタフライツイスト",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "スクートフルツイスト",
+      "to": "コークスクリュー",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "ゲイナー",
+      "to": "コークスクリュー",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "首抜き後転",
+      "to": "バッファ",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "後転",
+      "to": "首抜き後転",
+      "type": "progression",
+      "strength": 2,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "横転",
+      "to": "背面",
+      "type": "progression",
+      "strength": 2,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "背面",
+      "to": "ロン横",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    },
+    {
+      "from": "背面",
+      "to": "ゲイナー",
+      "type": "progression",
+      "strength": 3,
+      "note": "空中系アクロバット相関図を参考に追加"
+    }
+  ],
+  "featured": [
+    "ロンダート",
+    "バク転",
+    "バタフライツイスト",
+    "ロン宙",
+    "コークスクリュー",
+    "ウインドミル"
+  ]
+}
