@@ -15,7 +15,7 @@ import {
   type Node,
   type NodeProps
 } from "@xyflow/react";
-import { CheckCircle2, Circle, RotateCcw, Sparkles, Trophy } from "lucide-react";
+import { CheckCircle2, Circle, RotateCcw, Search, Sparkles, Trophy } from "lucide-react";
 import "@xyflow/react/dist/style.css";
 import { makeLevelColumnLayoutMap } from "@/lib/map-layout";
 import type { RelationType, Trick, TrickMapPosition, TrickRelation } from "@/lib/types";
@@ -30,6 +30,9 @@ const edgeStyles: Record<RelationType, { color: string; label: string }> = {
   variation: { color: "#4f83c4", label: "変化" },
   combo: { color: "#8a5bbf", label: "連携" }
 };
+
+const relationTypeOrder: RelationType[] = ["prerequisite", "progression", "variation", "combo"];
+const allFamilyFilter = "__all__";
 
 const familyPalette = [
   { bg: "#e3f3ee", border: "#24514a", solid: "#24514a", text: "#163c36" },
@@ -74,6 +77,9 @@ export function LearningMap({
   const [isCompactViewport, setIsCompactViewport] = useState(false);
   const [masteredIds, setMasteredIds] = useState<Set<string>>(() => new Set());
   const [localEditorPositions, setLocalEditorPositions] = useState<TrickMapPosition[]>([]);
+  const [selectedFamily, setSelectedFamily] = useState(allFamilyFilter);
+  const [relationTypeFilters, setRelationTypeFilters] = useState<RelationType[]>(relationTypeOrder);
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     const updateViewportMode = () => setIsCompactViewport(window.innerWidth < 640);
@@ -112,24 +118,84 @@ export function LearningMap({
 
   const trickById = useMemo(() => new Map(tricks.map((trick) => [trick.id, trick])), [tricks]);
 
-  const graphRelations = useMemo(
+  const allGraphRelations = useMemo(
     () => relations.filter((relation) => trickById.has(relation.fromTrickId) && trickById.has(relation.toTrickId)),
     [relations, trickById]
   );
 
-  const visibleTricks = useMemo(() => {
+  const allGraphTricks = useMemo(() => {
     const ids = new Set<string>();
-    for (const relation of graphRelations) {
+    for (const relation of allGraphRelations) {
       ids.add(relation.fromTrickId);
       ids.add(relation.toTrickId);
     }
     return tricks.filter((trick) => ids.has(trick.id));
-  }, [graphRelations, tricks]);
+  }, [allGraphRelations, tricks]);
 
   const familyStyles = useMemo(() => {
-    const families = Array.from(new Set(visibleTricks.map((trick) => trick.family))).sort((a, b) => a.localeCompare(b, "ja"));
+    const families = Array.from(new Set(allGraphTricks.map((trick) => trick.family))).sort((a, b) => a.localeCompare(b, "ja"));
     return new Map(families.map((family, index) => [family, familyPalette[index % familyPalette.length]]));
-  }, [visibleTricks]);
+  }, [allGraphTricks]);
+
+  const normalizedQuery = query.trim().toLowerCase();
+  const activeRelationTypes = useMemo(() => new Set(relationTypeFilters), [relationTypeFilters]);
+
+  const scopedRelations = useMemo(
+    () =>
+      allGraphRelations.filter((relation) => {
+        if (!activeRelationTypes.has(relation.type)) return false;
+        if (selectedFamily === allFamilyFilter) return true;
+        const from = trickById.get(relation.fromTrickId);
+        const to = trickById.get(relation.toTrickId);
+        return from?.family === selectedFamily || to?.family === selectedFamily;
+      }),
+    [activeRelationTypes, allGraphRelations, selectedFamily, trickById]
+  );
+
+  const visibleTricks = useMemo(() => {
+    const ids = new Set<string>();
+    for (const relation of scopedRelations) {
+      ids.add(relation.fromTrickId);
+      ids.add(relation.toTrickId);
+    }
+
+    if (selectedFamily !== allFamilyFilter) {
+      for (const trick of allGraphTricks) {
+        if (trick.family === selectedFamily) ids.add(trick.id);
+      }
+    }
+
+    if (!normalizedQuery) return allGraphTricks.filter((trick) => ids.has(trick.id));
+
+    const matchedIds = new Set<string>();
+    for (const trick of allGraphTricks) {
+      if (ids.has(trick.id) && matchesTrickQuery(trick, normalizedQuery)) matchedIds.add(trick.id);
+    }
+
+    const contextualIds = new Set(matchedIds);
+    for (const relation of scopedRelations) {
+      if (matchedIds.has(relation.fromTrickId) || matchedIds.has(relation.toTrickId)) {
+        contextualIds.add(relation.fromTrickId);
+        contextualIds.add(relation.toTrickId);
+      }
+    }
+
+    return allGraphTricks.filter((trick) => contextualIds.has(trick.id));
+  }, [allGraphTricks, normalizedQuery, scopedRelations, selectedFamily]);
+
+  const visibleTrickIds = useMemo(() => new Set(visibleTricks.map((trick) => trick.id)), [visibleTricks]);
+
+  const graphRelations = useMemo(
+    () =>
+      scopedRelations.filter((relation) => {
+        if (!visibleTrickIds.has(relation.fromTrickId) || !visibleTrickIds.has(relation.toTrickId)) return false;
+        if (!normalizedQuery) return true;
+        const from = trickById.get(relation.fromTrickId);
+        const to = trickById.get(relation.toTrickId);
+        return Boolean((from && matchesTrickQuery(from, normalizedQuery)) || (to && matchesTrickQuery(to, normalizedQuery)));
+      }),
+    [normalizedQuery, scopedRelations, trickById, visibleTrickIds]
+  );
 
   const positionByTrickId = useMemo(() => {
     const official = new Map(mapPositions.map((position) => [position.trickId, position]));
@@ -206,10 +272,39 @@ export function LearningMap({
   const nextMilestone = Math.min(visibleTricks.length, Math.ceil((masteredCount + 1) / 5) * 5);
   const remainingToMilestone = Math.max(0, nextMilestone - masteredCount);
   const familyStats = Array.from(familyStyles.entries()).map(([family, style]) => {
-    const familyTricks = visibleTricks.filter((trick) => trick.family === family);
+    const familyTricks = allGraphTricks.filter((trick) => trick.family === family);
     const done = familyTricks.filter((trick) => masteredIds.has(trick.id)).length;
     return { family, style, total: familyTricks.length, done };
   });
+  const relationStats = relationTypeOrder.map((type) => ({
+    type,
+    count: allGraphRelations.filter((relation) => relation.type === type).length,
+    style: edgeStyles[type],
+    active: relationTypeFilters.includes(type)
+  }));
+  const hasFilters = selectedFamily !== allFamilyFilter || relationTypeFilters.length !== relationTypeOrder.length || Boolean(normalizedQuery);
+  const mapViewKey = [
+    isCompactViewport ? "compact-skill-tree" : "wide-skill-tree",
+    selectedFamily,
+    relationTypeFilters.join("-"),
+    normalizedQuery
+  ].join(":");
+
+  function toggleRelationType(type: RelationType) {
+    setRelationTypeFilters((current) => {
+      if (current.includes(type)) {
+        const next = current.filter((item) => item !== type);
+        return next.length ? next : relationTypeOrder;
+      }
+      return relationTypeOrder.filter((item) => item === type || current.includes(item));
+    });
+  }
+
+  function resetMapFilters() {
+    setSelectedFamily(allFamilyFilter);
+    setRelationTypeFilters(relationTypeOrder);
+    setQuery("");
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-3 py-6 sm:px-6 sm:py-10 lg:px-8">
@@ -253,58 +348,152 @@ export function LearningMap({
         </div>
       </div>
 
-      <div className="mb-4 grid gap-3 lg:grid-cols-[1fr_auto] lg:items-start">
-        <div className="flex flex-wrap gap-2">
-          {familyStats.map((item) => (
-            <span
-              key={item.family}
-              className="inline-flex items-center gap-2 rounded border bg-white px-3 py-1.5 text-xs font-black"
-              style={{ borderColor: item.style.border, color: item.style.text }}
-            >
-              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.style.solid }} />
-              {item.family}
-              <span className="rounded bg-paper px-1.5 py-0.5 text-[10px] text-graphite/70">
-                {item.done}/{item.total}
-              </span>
-            </span>
-          ))}
+      <div className="mb-4 rounded border border-ink/10 bg-white p-3 shadow-sm sm:p-4">
+        <div className="mb-3 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs font-black text-graphite/62">表示範囲</p>
+            <p className="mt-1 text-sm font-black text-ink">
+              {visibleTricks.length} / {allGraphTricks.length} 技
+              <span className="ml-2 text-xs text-graphite/58">{graphRelations.length} / {allGraphRelations.length} 本</span>
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <label className="flex h-10 min-w-0 items-center gap-2 rounded border border-ink/12 bg-paper px-3 text-sm focus-within:border-pine sm:w-72">
+              <Search aria-hidden className="size-4 shrink-0 text-graphite/42" />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="技名・系統・タグで探す"
+                className="h-full min-w-0 flex-1 bg-transparent outline-none"
+              />
+            </label>
+            {hasFilters ? (
+              <button
+                type="button"
+                onClick={resetMapFilters}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded border border-ink/14 px-3 text-sm font-black text-graphite transition hover:border-coral hover:text-coral"
+              >
+                <RotateCcw aria-hidden className="size-4" />
+                表示を戻す
+              </button>
+            ) : null}
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {Object.entries(edgeStyles).map(([type, style]) => (
-            <span key={type} className="inline-flex items-center gap-2 rounded border border-ink/10 bg-white px-3 py-1.5 text-xs font-black text-graphite">
-              <span className="h-1.5 w-7 rounded-full" style={{ backgroundColor: style.color }} />
-              {style.label}
-            </span>
-          ))}
+
+        <div className="grid gap-3 xl:grid-cols-[1fr_auto]">
+          <div>
+            <p className="mb-2 text-xs font-black text-graphite/62">系統</p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedFamily(allFamilyFilter)}
+                className={`inline-flex items-center gap-2 rounded border px-3 py-1.5 text-xs font-black transition ${
+                  selectedFamily === allFamilyFilter ? "border-ink bg-ink text-white" : "border-ink/10 bg-paper text-graphite hover:border-pine"
+                }`}
+              >
+                すべて
+                <span className={`rounded px-1.5 py-0.5 text-[10px] ${selectedFamily === allFamilyFilter ? "bg-white/18 text-white" : "bg-white text-graphite/70"}`}>
+                  {allGraphTricks.length}
+                </span>
+              </button>
+              {familyStats.map((item) => {
+                const isActive = selectedFamily === item.family;
+                return (
+                  <button
+                    key={item.family}
+                    type="button"
+                    onClick={() => setSelectedFamily(item.family)}
+                    className="inline-flex items-center gap-2 rounded border px-3 py-1.5 text-xs font-black transition hover:shadow-sm"
+                    style={{
+                      borderColor: item.style.border,
+                      backgroundColor: isActive ? item.style.solid : "#ffffff",
+                      color: isActive ? "#ffffff" : item.style.text
+                    }}
+                  >
+                    <span className="h-2.5 w-2.5 rounded-full bg-current" />
+                    {item.family}
+                    <span className={`rounded px-1.5 py-0.5 text-[10px] ${isActive ? "bg-white/18 text-white" : "bg-paper text-graphite/70"}`}>
+                      {item.done}/{item.total}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-2 text-xs font-black text-graphite/62">線の種類</p>
+            <div className="flex flex-wrap gap-2">
+              {relationStats.map((item) => (
+                <button
+                  key={item.type}
+                  type="button"
+                  onClick={() => toggleRelationType(item.type)}
+                  className={`inline-flex items-center gap-2 rounded border px-3 py-1.5 text-xs font-black transition ${
+                    item.active ? "bg-white text-graphite shadow-sm" : "border-ink/10 bg-paper text-graphite/52"
+                  }`}
+                  style={{ borderColor: item.active ? item.style.color : undefined }}
+                >
+                  <span className="h-1.5 w-7 rounded-full" style={{ backgroundColor: item.active ? item.style.color : "#b8b0a5" }} />
+                  {item.style.label}
+                  <span className="rounded bg-paper px-1.5 py-0.5 text-[10px] text-graphite/70">{item.count}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
       <div className="h-[62vh] min-h-[460px] overflow-hidden rounded border border-ink/10 bg-white shadow-soft sm:h-[68vh] sm:min-h-[560px] lg:h-[760px]">
-        <ReactFlow
-          key={isCompactViewport ? "compact-skill-tree" : "wide-skill-tree"}
-          nodes={nodes}
-          edges={edges}
-          nodeTypes={nodeTypes}
-          fitView={!isCompactViewport}
-          fitViewOptions={{ padding: 0.18 }}
-          defaultViewport={isCompactViewport ? { x: 18, y: 32, zoom: 0.78 } : undefined}
-          minZoom={isCompactViewport ? 0.34 : 0.16}
-          maxZoom={isCompactViewport ? 1.35 : 1.25}
-          onNodeMouseEnter={(_, node) => setActiveNodeId(node.id)}
-          onNodeMouseLeave={() => setActiveNodeId(null)}
-          onNodeClick={(_, node) => setActiveNodeId(node.id)}
-        >
-          <Background color="#d8d1c7" gap={18} />
-          <MiniMap
-            pannable
-            zoomable
-            nodeColor={(node) => (node.data.checked ? "#24514a" : ((node.data.familyStyle as SkillNodeData["familyStyle"] | undefined)?.solid ?? "#f0c45c"))}
-          />
-          <Controls />
-        </ReactFlow>
+        {visibleTricks.length ? (
+          <ReactFlow
+            key={mapViewKey}
+            nodes={nodes}
+            edges={edges}
+            nodeTypes={nodeTypes}
+            fitView={!isCompactViewport}
+            fitViewOptions={{ padding: 0.18 }}
+            defaultViewport={isCompactViewport ? { x: 18, y: 32, zoom: 0.78 } : undefined}
+            minZoom={isCompactViewport ? 0.34 : 0.16}
+            maxZoom={isCompactViewport ? 1.35 : 1.25}
+            onNodeMouseEnter={(_, node) => setActiveNodeId(node.id)}
+            onNodeMouseLeave={() => setActiveNodeId(null)}
+            onNodeClick={(_, node) => setActiveNodeId(node.id)}
+          >
+            <Background color="#d8d1c7" gap={18} />
+            <MiniMap
+              pannable
+              zoomable
+              nodeColor={(node) => (node.data.checked ? "#24514a" : ((node.data.familyStyle as SkillNodeData["familyStyle"] | undefined)?.solid ?? "#f0c45c"))}
+            />
+            <Controls />
+          </ReactFlow>
+        ) : (
+          <div className="grid h-full place-items-center bg-paper px-6 text-center">
+            <div>
+              <p className="text-lg font-black text-ink">該当する技がありません</p>
+              <p className="mt-2 text-sm font-semibold text-graphite/68">検索語か表示範囲を少し広げてください。</p>
+              <button
+                type="button"
+                onClick={resetMapFilters}
+                className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded bg-pine px-4 text-sm font-black text-white transition hover:bg-ink"
+              >
+                <RotateCcw aria-hidden className="size-4" />
+                表示を戻す
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
+}
+
+function matchesTrickQuery(trick: Trick, normalizedQuery: string) {
+  const searchable = [trick.name, trick.family, trick.levelCategory, trick.axis, trick.takeoff, trick.landing, ...trick.aliases, ...trick.tags]
+    .join(" ")
+    .toLowerCase();
+  return searchable.includes(normalizedQuery);
 }
 
 function SkillNode({ id, data, selected }: NodeProps<SkillTreeNode>) {
