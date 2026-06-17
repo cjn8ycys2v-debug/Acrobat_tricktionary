@@ -17,7 +17,7 @@ import {
 } from "@xyflow/react";
 import { CheckCircle2, Circle, RotateCcw, Search, Sparkles, Trophy } from "lucide-react";
 import "@xyflow/react/dist/style.css";
-import { makeLevelColumnLayoutMap } from "@/lib/map-layout";
+import { isPrimarySkillRelation, makeDirectSkillTreeRelations, makeLevelColumnLayoutMap } from "@/lib/map-layout";
 import { sortDisciplines, sortFamilies } from "@/lib/taxonomy";
 import type { RelationType, Trick, TrickMapPosition, TrickRelation } from "@/lib/types";
 import { relationLabel } from "@/lib/utils";
@@ -33,6 +33,7 @@ const edgeStyles: Record<RelationType, { color: string; label: string }> = {
 };
 
 const relationTypeOrder: RelationType[] = ["prerequisite", "progression", "variation", "combo"];
+const defaultRelationTypeFilters: RelationType[] = ["prerequisite", "progression"];
 const allDisciplineFilter = "__all__";
 const allFamilyFilter = "__all__";
 
@@ -82,7 +83,8 @@ export function LearningMap({
   const [localEditorPositions, setLocalEditorPositions] = useState<TrickMapPosition[]>([]);
   const [selectedDiscipline, setSelectedDiscipline] = useState(allDisciplineFilter);
   const [selectedFamily, setSelectedFamily] = useState(allFamilyFilter);
-  const [relationTypeFilters, setRelationTypeFilters] = useState<RelationType[]>(relationTypeOrder);
+  const [relationTypeFilters, setRelationTypeFilters] = useState<RelationType[]>(defaultRelationTypeFilters);
+  const [directOnly, setDirectOnly] = useState(true);
   const [query, setQuery] = useState("");
   const initialFocusApplied = useRef(false);
 
@@ -147,7 +149,8 @@ export function LearningMap({
     const focused = allGraphTricks.find((trick) => trick.slug === focusValue || trick.id === focusValue || trick.name === focusValue);
     setSelectedDiscipline(allDisciplineFilter);
     setSelectedFamily(allFamilyFilter);
-    setRelationTypeFilters(relationTypeOrder);
+    setRelationTypeFilters(defaultRelationTypeFilters);
+    setDirectOnly(true);
     setQuery(focused?.name ?? focusValue);
     if (focused) setActiveNodeId(focused.id);
   }, [allGraphTricks]);
@@ -171,42 +174,39 @@ export function LearningMap({
   const activeRelationTypes = useMemo(() => new Set(relationTypeFilters), [relationTypeFilters]);
 
   const scopedRelations = useMemo(
-    () =>
-      allGraphRelations.filter((relation) => {
+    () => {
+      const filtered = allGraphRelations.filter((relation) => {
         if (!activeRelationTypes.has(relation.type)) return false;
         const from = trickById.get(relation.fromTrickId);
         const to = trickById.get(relation.toTrickId);
         if (selectedDiscipline !== allDisciplineFilter && from?.discipline !== selectedDiscipline && to?.discipline !== selectedDiscipline) return false;
         if (selectedFamily === allFamilyFilter) return true;
         return from?.family === selectedFamily || to?.family === selectedFamily;
-      }),
-    [activeRelationTypes, allGraphRelations, selectedDiscipline, selectedFamily, trickById]
+      });
+
+      if (!directOnly) return filtered;
+
+      const primary = makeDirectSkillTreeRelations(
+        filtered.filter((relation) => isPrimarySkillRelation(relation)),
+        allGraphTricks
+      );
+      return [...primary, ...filtered.filter((relation) => !isPrimarySkillRelation(relation))];
+    },
+    [activeRelationTypes, allGraphRelations, allGraphTricks, directOnly, selectedDiscipline, selectedFamily, trickById]
   );
 
   const visibleTricks = useMemo(() => {
-    const ids = new Set<string>();
-    for (const relation of scopedRelations) {
-      ids.add(relation.fromTrickId);
-      ids.add(relation.toTrickId);
-    }
+    const filteredByScope = allGraphTricks.filter(
+      (trick) =>
+        (selectedDiscipline === allDisciplineFilter || trick.discipline === selectedDiscipline) &&
+        (selectedFamily === allFamilyFilter || trick.family === selectedFamily)
+    );
 
-    if (selectedDiscipline !== allDisciplineFilter) {
-      for (const trick of allGraphTricks) {
-        if (trick.discipline === selectedDiscipline) ids.add(trick.id);
-      }
-    }
-
-    if (selectedFamily !== allFamilyFilter) {
-      for (const trick of allGraphTricks) {
-        if (trick.family === selectedFamily) ids.add(trick.id);
-      }
-    }
-
-    if (!normalizedQuery) return allGraphTricks.filter((trick) => ids.has(trick.id));
+    if (!normalizedQuery) return filteredByScope;
 
     const matchedIds = new Set<string>();
-    for (const trick of allGraphTricks) {
-      if (ids.has(trick.id) && matchesTrickQuery(trick, normalizedQuery)) matchedIds.add(trick.id);
+    for (const trick of filteredByScope) {
+      if (matchesTrickQuery(trick, normalizedQuery)) matchedIds.add(trick.id);
     }
 
     const contextualIds = new Set(matchedIds);
@@ -217,7 +217,7 @@ export function LearningMap({
       }
     }
 
-    return allGraphTricks.filter((trick) => contextualIds.has(trick.id));
+    return filteredByScope.filter((trick) => contextualIds.has(trick.id));
   }, [allGraphTricks, normalizedQuery, scopedRelations, selectedDiscipline, selectedFamily]);
 
   const visibleTrickIds = useMemo(() => new Set(visibleTricks.map((trick) => trick.id)), [visibleTricks]);
@@ -257,6 +257,7 @@ export function LearningMap({
         id: trick.id,
         type: "skill" as const,
         position: positionByTrickId.get(trick.id) ?? autoPositionByTrickId.get(trick.id) ?? { x: 0, y: 0 },
+        style: { width: 206, height: 74 },
         data: {
           name: trick.name,
           slug: trick.slug,
@@ -320,12 +321,15 @@ export function LearningMap({
     style: edgeStyles[type],
     active: relationTypeFilters.includes(type)
   }));
-  const hasFilters = selectedDiscipline !== allDisciplineFilter || selectedFamily !== allFamilyFilter || relationTypeFilters.length !== relationTypeOrder.length || Boolean(normalizedQuery);
+  const isDefaultRelationFilter =
+    relationTypeFilters.length === defaultRelationTypeFilters.length && defaultRelationTypeFilters.every((type) => relationTypeFilters.includes(type));
+  const hasFilters = selectedDiscipline !== allDisciplineFilter || selectedFamily !== allFamilyFilter || !isDefaultRelationFilter || !directOnly || Boolean(normalizedQuery);
   const mapViewKey = [
     isCompactViewport ? "compact-skill-tree" : "wide-skill-tree",
     selectedDiscipline,
     selectedFamily,
     relationTypeFilters.join("-"),
+    directOnly ? "direct" : "all",
     normalizedQuery
   ].join(":");
 
@@ -333,7 +337,7 @@ export function LearningMap({
     setRelationTypeFilters((current) => {
       if (current.includes(type)) {
         const next = current.filter((item) => item !== type);
-        return next.length ? next : relationTypeOrder;
+        return next.length ? next : defaultRelationTypeFilters;
       }
       return relationTypeOrder.filter((item) => item === type || current.includes(item));
     });
@@ -342,7 +346,8 @@ export function LearningMap({
   function resetMapFilters() {
     setSelectedDiscipline(allDisciplineFilter);
     setSelectedFamily(allFamilyFilter);
-    setRelationTypeFilters(relationTypeOrder);
+    setRelationTypeFilters(defaultRelationTypeFilters);
+    setDirectOnly(true);
     setQuery("");
   }
 
@@ -353,7 +358,7 @@ export function LearningMap({
           <p className="mb-2 inline-flex rounded bg-skywash px-3 py-1 text-sm font-bold text-pine">Skill Tree</p>
           <h1 className="text-2xl font-black text-ink sm:text-4xl">相関マップ</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-graphite/76">
-            PDFの空中系アクロバット相関図をもとに、前提・派生・変化・連携のつながりを追加しています。
+            基礎技を左に置き、前提・派生を右へ広げるスキルツリーです。分野ごとに上下のレーンを分け、直接関係のある矢印を中心に表示します。
           </p>
         </div>
         <div className="grid gap-3 sm:grid-cols-[minmax(240px,320px)_auto] sm:items-end">
@@ -497,6 +502,18 @@ export function LearningMap({
           <div>
             <p className="mb-2 text-xs font-black text-graphite/62">線の種類</p>
             <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setDirectOnly((current) => !current)}
+                className={`inline-flex items-center gap-2 rounded border px-3 py-1.5 text-xs font-black transition ${
+                  directOnly ? "border-pine bg-pine text-white shadow-sm" : "border-ink/10 bg-paper text-graphite/68 hover:border-pine"
+                }`}
+              >
+                直接のみ
+                <span className={`rounded px-1.5 py-0.5 text-[10px] ${directOnly ? "bg-white/18 text-white" : "bg-white text-graphite/70"}`}>
+                  {directOnly ? "ON" : "OFF"}
+                </span>
+              </button>
               {relationStats.map((item) => (
                 <button
                   key={item.type}

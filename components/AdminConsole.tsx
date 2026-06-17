@@ -454,7 +454,7 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
           ) : null}
 
           {activeSection === "layout" ? (
-            <AdminMapEditor tricks={drafts} relations={relationDrafts} mapPositions={mapPositions} prototypeMode={prototypeMode} />
+            <AdminMapEditor tricks={drafts} relations={relationDrafts} mapPositions={mapPositions} prototypeMode={prototypeMode} onRelationsChange={setRelationDrafts} />
           ) : null}
 
           {activeSection === "status" ? (

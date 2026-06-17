@@ -6,15 +6,17 @@ import {
   Controls,
   MarkerType,
   MiniMap,
+  Position,
   ReactFlow,
   applyNodeChanges,
   type Edge,
   type Node,
-  type NodeChange
+  type NodeChange,
+  type Connection
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { GitBranch, RotateCcw, Save } from "lucide-react";
-import { makeLevelColumnLayoutMap } from "@/lib/map-layout";
+import { GitBranch, MousePointer2, RotateCcw, Save } from "lucide-react";
+import { makeDirectSkillTreeRelations, makeLevelColumnLayoutMap } from "@/lib/map-layout";
 import { sortFamilies } from "@/lib/taxonomy";
 import type { RelationType, Trick, TrickMapPosition, TrickRelation } from "@/lib/types";
 import { relationLabel } from "@/lib/utils";
@@ -35,12 +37,14 @@ type Props = {
   relations: TrickRelation[];
   mapPositions: TrickMapPosition[];
   prototypeMode: boolean;
+  onRelationsChange: (relations: TrickRelation[]) => void;
 };
 
-export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode }: Props) {
+export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode, onRelationsChange }: Props) {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [message, setMessage] = useState("カードをドラッグして、編集者用の公式配置を作れます。");
   const [layoutText, setLayoutText] = useState("");
+  const [newRelationType, setNewRelationType] = useState<RelationType>("progression");
 
   const trickById = useMemo(() => new Map(tricks.map((trick) => [trick.id, trick])), [tricks]);
   const visibleTricks = useMemo(() => {
@@ -51,17 +55,18 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode 
     }
     return tricks.filter((trick) => ids.has(trick.id));
   }, [relations, tricks]);
+  const visibleRelations = useMemo(() => makeDirectSkillTreeRelations(relations, visibleTricks), [relations, visibleTricks]);
 
   const familyByName = useMemo(() => {
     const families = sortFamilies(Array.from(new Set(visibleTricks.map((trick) => trick.family))));
     return new Map(families.map((family, index) => [family, familyColors[index % familyColors.length]]));
   }, [visibleTricks]);
 
-  const autoNodes = useMemo(() => makeNodes(visibleTricks, relations, mapPositions, familyByName), [familyByName, mapPositions, relations, visibleTricks]);
+  const autoNodes = useMemo(() => makeNodes(visibleTricks, visibleRelations, mapPositions, familyByName), [familyByName, mapPositions, visibleRelations, visibleTricks]);
 
   const edges: Edge[] = useMemo(
     () =>
-      relations
+      visibleRelations
         .filter((relation) => trickById.has(relation.fromTrickId) && trickById.has(relation.toTrickId))
         .map((relation) => ({
           id: relation.id,
@@ -76,19 +81,19 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode 
           labelBgBorderRadius: 6,
           labelBgStyle: { fill: "#fffaf0", fillOpacity: 0.96 }
         })),
-    [relations, trickById]
+    [trickById, visibleRelations]
   );
 
   useEffect(() => {
     if (prototypeMode) {
       const stored = readStoredPositions();
       if (stored.length) {
-        setNodes(makeNodes(visibleTricks, relations, stored, familyByName));
+        setNodes(makeNodes(visibleTricks, visibleRelations, stored, familyByName));
         return;
       }
     }
     setNodes(autoNodes);
-  }, [autoNodes, familyByName, prototypeMode, relations, visibleTricks]);
+  }, [autoNodes, familyByName, prototypeMode, visibleRelations, visibleTricks]);
 
   useEffect(() => {
     setLayoutText(exportLayout(nodes, trickById));
@@ -97,6 +102,43 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode 
   const onNodesChange = useCallback((changes: NodeChange[]) => {
     setNodes((current) => applyNodeChanges(changes, current));
   }, []);
+
+  const onEdgesDelete = useCallback(
+    (deletedEdges: Edge[]) => {
+      const deletedIds = new Set(deletedEdges.map((edge) => edge.id));
+      onRelationsChange(relations.filter((relation) => !deletedIds.has(relation.id)));
+      setMessage(`${deletedEdges.length}本の線を削除しました。DBに反映するには「線を保存」を押してください。`);
+    },
+    [onRelationsChange, relations]
+  );
+
+  const onConnect = useCallback(
+    (connection: Connection) => {
+      if (!connection.source || !connection.target || connection.source === connection.target) {
+        setMessage("同じ技同士は繋げません。");
+        return;
+      }
+      const exists = relations.some((relation) => relation.fromTrickId === connection.source && relation.toTrickId === connection.target && relation.type === newRelationType);
+      if (exists) {
+        setMessage("同じ向き・同じ種類の線はすでにあります。");
+        return;
+      }
+
+      const relation: TrickRelation = {
+        id: `draft-${connection.source}-${connection.target}-${newRelationType}-${Date.now()}`,
+        fromTrickId: connection.source,
+        toTrickId: connection.target,
+        type: newRelationType,
+        note: "配置タブで追加",
+        strength: 3
+      };
+      onRelationsChange([...relations, relation]);
+      const from = trickById.get(connection.source)?.name ?? "元の技";
+      const to = trickById.get(connection.target)?.name ?? "次の技";
+      setMessage(`${from} → ${to} を${relationLabel(newRelationType)}として追加しました。DBに反映するには「線を保存」を押してください。`);
+    },
+    [newRelationType, onRelationsChange, relations, trickById]
+  );
 
   const positions = useMemo(
     () =>
@@ -124,8 +166,31 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode 
     setMessage(response.ok ? `公式配置を保存しました: ${result.positions ?? positions.length}件` : `保存に失敗しました: ${result.error ?? "unknown error"}`);
   }
 
+  async function saveRelations() {
+    if (prototypeMode) {
+      setMessage("prototype保存: 画面上の線に反映済みです。Supabase接続後はDBへ保存します。");
+      return;
+    }
+
+    const response = await fetch("/api/admin/relations", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        relations: relations.map((relation) => ({
+          fromTrickId: relation.fromTrickId,
+          toTrickId: relation.toTrickId,
+          type: relation.type,
+          note: relation.note,
+          strength: relation.strength
+        }))
+      })
+    });
+    const result = await response.json();
+    setMessage(response.ok ? `線をDBへ保存しました: ${result.relations ?? relations.length}本` : `線の保存に失敗しました: ${result.error ?? "unknown error"}`);
+  }
+
   function resetAutoLayout() {
-    setNodes(makeNodes(visibleTricks, relations, [], familyByName));
+    setNodes(makeNodes(visibleTricks, visibleRelations, [], familyByName));
     setMessage("自動整列に戻しました。保存すると公式配置として反映されます。");
   }
 
@@ -147,7 +212,7 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode 
         return;
       }
 
-      setNodes(makeNodes(visibleTricks, relations, positionsFromText, familyByName));
+      setNodes(makeNodes(visibleTricks, visibleRelations, positionsFromText, familyByName));
       setMessage(`JSONから${positionsFromText.length}件の配置を反映しました。`);
     } catch {
       setMessage("JSONの形式を確認してください。");
@@ -163,10 +228,24 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode 
             公式スキルツリー配置
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-graphite/76">
-            編集者用です。ここで保存した配置が公開相関図の公式レイアウトになります。
+            編集者用です。カードはドラッグ、右端から左端へ線を引くと前提・派生を追加できます。線は選択してDelete/Backspaceで削除できます。
           </p>
         </div>
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
+          <label className="inline-flex h-10 items-center gap-2 rounded border border-ink/14 bg-paper px-3 text-xs font-black text-graphite">
+            追加する線
+            <select
+              value={newRelationType}
+              onChange={(event) => setNewRelationType(event.target.value as RelationType)}
+              className="h-8 rounded border border-ink/10 bg-white px-2 text-xs font-black outline-none focus:border-pine"
+            >
+              {(["progression", "prerequisite"] as RelationType[]).map((type) => (
+                <option key={type} value={type}>
+                  {relationLabel(type)}
+                </option>
+              ))}
+            </select>
+          </label>
           <button
             type="button"
             onClick={resetAutoLayout}
@@ -174,6 +253,14 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode 
           >
             <RotateCcw aria-hidden className="size-4" />
             自動整列
+          </button>
+          <button
+            type="button"
+            onClick={saveRelations}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded border border-pine px-3 text-sm font-black text-pine transition hover:bg-pine hover:text-white"
+          >
+            <MousePointer2 aria-hidden className="size-4" />
+            線を保存
           </button>
           <button
             type="button"
@@ -194,12 +281,18 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode 
             nodes={nodes}
             edges={edges}
             onNodesChange={onNodesChange}
+            onConnect={onConnect}
+            onEdgesDelete={onEdgesDelete}
+            deleteKeyCode={["Backspace", "Delete"]}
             fitView
+            snapToGrid
+            snapGrid={[20, 20]}
+            connectionLineStyle={{ stroke: edgeColors[newRelationType], strokeWidth: 3 }}
             fitViewOptions={{ padding: 0.16 }}
             minZoom={0.16}
             maxZoom={1.4}
           >
-            <Background color="#d8d1c7" gap={18} />
+            <Background color="#d8d1c7" gap={20} />
             <MiniMap pannable zoomable nodeColor={(node) => String(node.style?.borderColor ?? "#24514a")} />
             <Controls />
           </ReactFlow>
@@ -242,9 +335,11 @@ function makeNodes(tricks: Trick[], relations: TrickRelation[], positions: Trick
         id: trick.id,
         type: "default",
         position: saved ? { x: saved.x, y: saved.y } : autoPosition,
-        data: { label: `${trick.name}\nLv.${trick.level} / ${trick.family}` },
+        sourcePosition: Position.Right,
+        targetPosition: Position.Left,
+        data: { label: `${trick.name}\nLv.${trick.level} / ${trick.discipline} / ${trick.family}` },
         style: {
-          width: 206,
+          width: 222,
           borderColor: color,
           background: "#ffffff",
           borderWidth: 2,
