@@ -30,6 +30,7 @@ create table public.tricks (
   description text not null,
   difficulty int not null check (difficulty between 1 and 5),
   risk_level int not null check (risk_level between 1 and 5),
+  discipline text not null default 'ダブルダッチ',
   family text not null,
   axis text not null,
   takeoff text not null,

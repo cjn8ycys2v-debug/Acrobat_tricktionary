@@ -1,5 +1,5 @@
 import atlasData from "@/data/atlas-data.json";
-import { sortFamilies } from "@/lib/taxonomy";
+import { deriveDiscipline, sortDisciplines, sortFamilies } from "@/lib/taxonomy";
 import type { AtlasData, LevelTest, Source, Trick, TrickMapPosition, TrickRelation } from "@/lib/types";
 
 const data = atlasData as AtlasData;
@@ -103,8 +103,8 @@ function deriveRopeContext(level: number, name: string) {
   return "縄内単発";
 }
 
-function deriveTags(name: string, level: number, category: string, family: string) {
-  const tags = new Set<string>([family, `Lv.${level}`]);
+function deriveTags(name: string, level: number, family: string, discipline: string) {
+  const tags = new Set<string>([discipline, family, `Lv.${level}`]);
   if (level <= 3) tags.add("基礎");
   if (level >= 7) tags.add("空中系");
   if (/(倒立|肘|チェアー)/.test(name)) tags.add("倒立");
@@ -115,15 +115,36 @@ function deriveTags(name: string, level: number, category: string, family: strin
   return Array.from(tags);
 }
 
-function makeSummary(name: string, level: number, category: string) {
-  if (level <= 2) return `${category}の土台になる基礎技。縄内で安定して出す前に姿勢と受け身を固める。`;
-  if (level <= 5) return `${category}の中級技。手支持、反発、空中感覚を次の発展技につなげる。`;
-  if (level <= 8) return `${category}の発展技。高さ、入り、着地をそろえてパフォーマンスに組み込む。`;
-  return `${category}の高難度技。十分な前提技と安全な補助環境を確認してから扱う。`;
+function practiceFocus(name: string, family: string, discipline: string) {
+  if (family === "基礎ムーブ") return "縄のリズムを崩さず、踏み替えや床移動を安定させることが練習の軸になります。";
+  if (family === "倒立・床基礎") return "肩、体幹、受け身を整え、手支持や床支持の姿勢を崩さないことが重要です。";
+  if (family === "側方・反発") return "手を着く位置、腰の通り道、着地後の反発をそろえると次の空中技へつながります。";
+  if (family === "空中回転") return "踏切の高さ、回転姿勢、着地の向きを分けて確認しながら段階的に練習します。";
+  if (family === "ひねり") return "回転にひねりを加えるため、目線、締め、着地方向を前提技で確認してから扱います。";
+  if (discipline === "カポエイラ") return "手支持と蹴り上げの軌道を滑らかにつなぎ、勢いを止めずに切り返します。";
+  if (family === "トリッキング") return "片足踏切や斜めの軌道を使うので、入り方と着地後の流れまでセットで見ます。";
+  if (family === "ブレイキン・床回転") return "床支持の形、重心移動、回転の継続を安全に作ることが練習の中心です。";
+  if (/連続|オリジナル/.test(name)) return "単体技の完成度を保ったまま、つなぎ方と見せ方を設計します。";
+  return "分類と前提技を確認し、無理なく次の発展技へつなげます。";
 }
 
-function makeDescription(name: string, level: number, category: string, passCondition: string) {
-  return `${name}は、PDF由来のレベルテストではレベル${level}「${category}」に含まれる技です。合格条件は「${passCondition}」。図鑑内では、分類・タグ・前提関係から練習順を確認できるようにしています。`;
+function levelRole(level: number) {
+  if (level <= 2) return "最初に固めたい基礎";
+  if (level <= 5) return "発展技へ進むための中核";
+  if (level <= 8) return "演技に入れやすい発展";
+  return "十分な前提技が必要な高難度";
+}
+
+function makeSummary(name: string, level: number, family: string, discipline: string) {
+  return `${discipline} / ${family}の${levelRole(level)}技。${practiceFocus(name, family, discipline)}`;
+}
+
+function makeDescription(name: string, level: number, category: string, passCondition: string, family: string, discipline: string) {
+  return `${name}は、${discipline}の要素を持つ${family}系の技です。レベル${level}「${category}」では「${passCondition}」が目安です。${practiceFocus(
+    name,
+    family,
+    discipline
+  )} 前提技・派生技・近い技は相関図で確認できます。`;
 }
 
 export function getAllTricks(): Trick[] {
@@ -135,22 +156,24 @@ export function getAllTricks(): Trick[] {
       if (seen.has(name)) continue;
 
       const family = deriveFamily(name);
+      const discipline = deriveDiscipline(name, family);
       const axis = deriveAxis(name);
       const trick: Trick = {
         id: `trick-${String(index + 1).padStart(3, "0")}`,
         slug: slugFor(index, name),
         name,
         aliases: [],
-        summary: makeSummary(name, level.level, level.category),
-        description: makeDescription(name, level.level, level.category, level.passCondition),
+        summary: makeSummary(name, level.level, family, discipline),
+        description: makeDescription(name, level.level, level.category, level.passCondition, family, discipline),
         difficulty: difficultyByLevel.get(level.level) ?? clampLevel(Math.ceil(level.level / 2)),
         riskLevel: riskByLevel.get(level.level) ?? clampLevel(Math.ceil(level.level / 2)),
+        discipline,
         family,
         axis,
         takeoff: deriveTakeoff(name),
         landing: deriveLanding(name),
         ropeContext: deriveRopeContext(level.level, name),
-        tags: deriveTags(name, level.level, level.category, family),
+        tags: deriveTags(name, level.level, family, discipline),
         level: level.level,
         levelCategory: level.category,
         status: "published",
@@ -233,6 +256,7 @@ export function getFeaturedTricks() {
 
 export function getFilterOptions() {
   return {
+    disciplines: sortDisciplines(Array.from(new Set(allTricks.map((trick) => trick.discipline)))),
     families: sortFamilies(Array.from(new Set(allTricks.map((trick) => trick.family)))),
     axes: Array.from(new Set(allTricks.map((trick) => trick.axis))).sort(),
     takeoffs: Array.from(new Set(allTricks.map((trick) => trick.takeoff))).sort(),

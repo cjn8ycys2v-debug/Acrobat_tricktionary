@@ -1,6 +1,7 @@
 import { allTricks, getFilterOptions, levelTests, mapPositions, sources, trickRelations } from "@/lib/atlas";
 import { getSupabaseConfig } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { deriveDiscipline, sortDisciplines, sortFamilies } from "@/lib/taxonomy";
 import type { LevelTest, MediaAsset, Source, Trick, TrickMapPosition, TrickRelation, TrickStatus } from "@/lib/types";
 
 type SourceRow = {
@@ -21,6 +22,7 @@ type TrickRow = {
   description: string;
   difficulty: number;
   risk_level: number;
+  discipline?: string | null;
   family: string;
   axis: string;
   takeoff: string;
@@ -240,6 +242,7 @@ function mapTrick(row: TrickRow, sourceKeyByUuid: Map<string, string>): Trick {
     description: row.description,
     difficulty: normalizeRating(row.difficulty),
     riskLevel: normalizeRating(row.risk_level),
+    discipline: row.discipline ?? deriveDiscipline(row.name, row.family),
     family: row.family,
     axis: row.axis,
     takeoff: row.takeoff,
@@ -272,7 +275,8 @@ function normalizeRating(value: number): 1 | 2 | 3 | 4 | 5 {
 
 function makeOptions(tricks: Trick[]) {
   return {
-    families: Array.from(new Set(tricks.map((trick) => trick.family))).sort(),
+    disciplines: sortDisciplines(Array.from(new Set(tricks.map((trick) => trick.discipline)))),
+    families: sortFamilies(Array.from(new Set(tricks.map((trick) => trick.family)))),
     axes: Array.from(new Set(tricks.map((trick) => trick.axis))).sort(),
     takeoffs: Array.from(new Set(tricks.map((trick) => trick.takeoff))).sort(),
     landings: Array.from(new Set(tricks.map((trick) => trick.landing))).sort(),

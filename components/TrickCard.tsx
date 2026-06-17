@@ -10,6 +10,7 @@ export function TrickCard({ trick }: { trick: Trick }) {
         <div className="min-w-0">
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <span className="rounded bg-skywash px-2 py-1 text-xs font-bold text-pine">Lv.{trick.level}</span>
+            <span className="max-w-full rounded bg-ink px-2 py-1 text-xs font-bold text-white">{trick.discipline}</span>
             <span className="max-w-full rounded bg-saffron/18 px-2 py-1 text-xs font-bold text-graphite">{trick.family}</span>
           </div>
           <h2 className="break-words text-lg font-bold leading-tight text-ink">{trick.name}</h2>

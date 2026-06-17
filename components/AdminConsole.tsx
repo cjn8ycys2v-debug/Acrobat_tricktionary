@@ -67,6 +67,7 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
       description: "管理画面から説明を追加してください。",
       difficulty: 1,
       riskLevel: 1,
+      discipline: "ダブルダッチ",
       family: "未分類",
       axis: "未分類",
       takeoff: "未設定",
@@ -142,6 +143,7 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
         description: selected.description,
         difficulty: selected.difficulty,
         riskLevel: selected.riskLevel,
+        discipline: selected.discipline,
         family: selected.family,
         axis: selected.axis,
         takeoff: selected.takeoff,
@@ -337,7 +339,7 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
               >
                 <span className="block font-bold">{trick.name}</span>
                 <span className="text-xs">
-                  Lv.{trick.level || "-"} / {trick.family} / {trick.status}
+                  Lv.{trick.level || "-"} / {trick.discipline} / {trick.family} / {trick.status}
                 </span>
               </button>
             ))}
@@ -382,6 +384,7 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
                       <ListField label="別名" values={selected.aliases} onChange={(value) => updateSelected("aliases", value)} />
                       <ListField label="タグ" values={selected.tags} onChange={(value) => updateSelected("tags", value)} />
                       <Field label="要約" value={selected.summary} onChange={(value) => updateSelected("summary", value)} />
+                      <Field label="大分類" value={selected.discipline} onChange={(value) => updateSelected("discipline", value)} />
                       <Field label="系統" value={selected.family} onChange={(value) => updateSelected("family", value)} />
                       <Field label="軸" value={selected.axis} onChange={(value) => updateSelected("axis", value)} />
                       <Field label="縄文脈" value={selected.ropeContext} onChange={(value) => updateSelected("ropeContext", value)} />
@@ -588,7 +591,7 @@ function RelationPicker({
     return options
       .filter((option) => {
         if (!normalizedQuery) return true;
-        const searchable = [option.name, option.family, option.levelCategory, ...option.aliases, ...option.tags].join(" ").toLowerCase();
+        const searchable = [option.name, option.discipline, option.family, option.levelCategory, ...option.aliases, ...option.tags].join(" ").toLowerCase();
         return searchable.includes(normalizedQuery);
       })
       .slice(0, 80);
@@ -660,7 +663,7 @@ function RelationPicker({
               <span className="min-w-0">
                 <span className="block truncate font-bold">{option.name}</span>
                 <span className="mt-0.5 block truncate text-xs opacity-70">
-                  Lv.{option.level || "-"} / {option.family}
+                  Lv.{option.level || "-"} / {option.discipline} / {option.family}
                 </span>
               </span>
             </label>

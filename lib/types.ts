@@ -28,6 +28,7 @@ export type Trick = {
   description: string;
   difficulty: 1 | 2 | 3 | 4 | 5;
   riskLevel: 1 | 2 | 3 | 4 | 5;
+  discipline: string;
   family: string;
   axis: string;
   takeoff: string;

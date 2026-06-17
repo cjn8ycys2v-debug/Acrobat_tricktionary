@@ -34,6 +34,7 @@ export default async function TrickDetailPage({ params }: { params: Promise<{ sl
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <span className="rounded bg-pine px-3 py-1 text-sm font-black text-white">Lv.{trick.level}</span>
             <span className="rounded bg-saffron/18 px-3 py-1 text-sm font-bold text-graphite">{trick.levelCategory}</span>
+            <span className="rounded bg-ink px-3 py-1 text-sm font-bold text-white">{trick.discipline}</span>
             <span className="rounded bg-skywash px-3 py-1 text-sm font-bold text-pine">{trick.family}</span>
           </div>
           <h1 className="break-words text-3xl font-black tracking-normal text-ink sm:text-4xl">{trick.name}</h1>

@@ -4,8 +4,10 @@ import { useMemo, useState } from "react";
 import { Filter, Search, SlidersHorizontal, X } from "lucide-react";
 import type { Trick } from "@/lib/types";
 import { TrickCard } from "@/components/TrickCard";
+import { disciplineDescriptions } from "@/lib/taxonomy";
 
 type FilterOptions = {
+  disciplines: string[];
   families: string[];
   axes: string[];
   takeoffs: string[];
@@ -23,6 +25,7 @@ const allValue = "all";
 
 export function TrickExplorer({ tricks, options }: Props) {
   const [query, setQuery] = useState("");
+  const [discipline, setDiscipline] = useState(allValue);
   const [family, setFamily] = useState(allValue);
   const [axis, setAxis] = useState(allValue);
   const [difficulty, setDifficulty] = useState(allValue);
@@ -34,12 +37,13 @@ export function TrickExplorer({ tricks, options }: Props) {
     const normalizedQuery = query.trim().toLowerCase();
     return tricks
       .filter((trick) => {
-        const haystack = [trick.name, ...trick.aliases, trick.summary, trick.family, trick.axis, ...trick.tags]
+        const haystack = [trick.name, ...trick.aliases, trick.summary, trick.discipline, trick.family, trick.axis, ...trick.tags]
           .join(" ")
           .toLowerCase();
 
         return (
           (!normalizedQuery || haystack.includes(normalizedQuery)) &&
+          (discipline === allValue || trick.discipline === discipline) &&
           (family === allValue || trick.family === family) &&
           (axis === allValue || trick.axis === axis) &&
           (difficulty === allValue || String(trick.difficulty) === difficulty) &&
@@ -53,12 +57,23 @@ export function TrickExplorer({ tricks, options }: Props) {
         if (sort === "name") return a.name.localeCompare(b.name, "ja");
         return a.level - b.level || a.name.localeCompare(b.name, "ja");
       });
-  }, [axis, difficulty, family, query, risk, sort, tag, tricks]);
+  }, [axis, difficulty, discipline, family, query, risk, sort, tag, tricks]);
 
-  const hasFilters = Boolean(query || family !== allValue || axis !== allValue || difficulty !== allValue || risk !== allValue || tag !== allValue);
+  const disciplineStats = useMemo(
+    () =>
+      options.disciplines.map((item) => ({
+        name: item,
+        count: tricks.filter((trick) => trick.discipline === item).length,
+        description: disciplineDescriptions[item] ?? "分類ごとに技をまとめて探索できます。"
+      })),
+    [options.disciplines, tricks]
+  );
+
+  const hasFilters = Boolean(query || discipline !== allValue || family !== allValue || axis !== allValue || difficulty !== allValue || risk !== allValue || tag !== allValue);
 
   function resetFilters() {
     setQuery("");
+    setDiscipline(allValue);
     setFamily(allValue);
     setAxis(allValue);
     setDifficulty(allValue);
@@ -83,6 +98,7 @@ export function TrickExplorer({ tricks, options }: Props) {
               className="h-12 w-full rounded border border-ink/14 bg-paper px-4 text-base outline-none ring-pine/20 transition placeholder:text-graphite/45 focus:border-pine focus:ring-4"
             />
           </label>
+          <Select label="大分類" value={discipline} onChange={setDiscipline} values={options.disciplines} />
           <Select label="系統" value={family} onChange={setFamily} values={options.families} />
           <Select label="軸" value={axis} onChange={setAxis} values={options.axes} />
           <Select label="難度" value={difficulty} onChange={setDifficulty} values={["1", "2", "3", "4", "5"]} />
@@ -133,6 +149,43 @@ export function TrickExplorer({ tricks, options }: Props) {
               </button>
             ) : null}
           </div>
+        </div>
+      </div>
+
+      <div className="mt-5">
+        <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-sm font-black text-ink">分野から探す</p>
+            <p className="text-xs leading-5 text-graphite/64">まず動きの出どころで絞ると、相関図でも流れを追いやすくなります。</p>
+          </div>
+          {discipline !== allValue ? (
+            <button
+              type="button"
+              onClick={() => setDiscipline(allValue)}
+              className="inline-flex h-9 w-full items-center justify-center rounded border border-ink/12 px-3 text-xs font-black text-graphite transition hover:bg-ink hover:text-white sm:w-auto"
+            >
+              全分野に戻す
+            </button>
+          ) : null}
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {disciplineStats.map((item) => {
+            const isActive = discipline === item.name;
+            return (
+              <button
+                key={item.name}
+                type="button"
+                onClick={() => setDiscipline(item.name)}
+                className={`min-h-[118px] rounded border p-4 text-left transition ${
+                  isActive ? "border-pine bg-pine text-white shadow-soft" : "border-ink/10 bg-white text-ink hover:border-pine/45 hover:bg-skywash"
+                }`}
+              >
+                <span className={`text-xs font-black ${isActive ? "text-white/70" : "text-pine"}`}>{item.count} 技</span>
+                <span className="mt-1 block text-lg font-black">{item.name}</span>
+                <span className={`mt-2 block text-sm leading-6 ${isActive ? "text-white/78" : "text-graphite/70"}`}>{item.description}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
