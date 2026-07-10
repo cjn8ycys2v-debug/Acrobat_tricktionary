@@ -2,7 +2,7 @@ import { allTricks, getFilterOptions, levelTests, mapPositions, sources, trickRe
 import { getSupabaseConfig } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { deriveDiscipline, sortDisciplines, sortFamilies } from "@/lib/taxonomy";
-import type { LevelTest, MediaAsset, Source, Trick, TrickMapPosition, TrickRelation, TrickStatus } from "@/lib/types";
+import type { LevelTest, MediaAsset, RelationWaypoint, Source, Trick, TrickMapPosition, TrickRelation, TrickStatus } from "@/lib/types";
 
 type SourceRow = {
   id: string;
@@ -52,6 +52,7 @@ type RelationRow = {
   type: TrickRelation["type"];
   note: string;
   strength: number;
+  waypoints?: unknown;
 };
 
 type MediaRow = {
@@ -105,7 +106,7 @@ export async function getPublicAtlasContent(): Promise<AtlasContent> {
     supabase.from("sources").select("id, source_key, title, kind, url, show_by_default"),
     supabase.from("tricks").select("*").eq("status", "published").order("level", { ascending: true }).order("name", { ascending: true }),
     supabase.from("level_tests").select("level, category, title, pass_condition, trick_ids, source_id").order("level", { ascending: true }),
-    supabase.from("trick_relations").select("id, from_trick_id, to_trick_id, type, note, strength"),
+    supabase.from("trick_relations").select("id, from_trick_id, to_trick_id, type, note, strength, waypoints"),
     supabase.from("media_assets").select("id, trick_id, type, storage_path, duration, credit, consent_checked"),
     supabase.from("trick_map_positions").select("trick_id, x, y")
   ]);
@@ -136,7 +137,7 @@ export async function getAdminAtlasContent(): Promise<AtlasContent> {
     supabase.from("sources").select("id, source_key, title, kind, url, show_by_default"),
     supabase.from("tricks").select("*").order("level", { ascending: true }).order("name", { ascending: true }),
     supabase.from("level_tests").select("level, category, title, pass_condition, trick_ids, source_id").order("level", { ascending: true }),
-    supabase.from("trick_relations").select("id, from_trick_id, to_trick_id, type, note, strength"),
+    supabase.from("trick_relations").select("id, from_trick_id, to_trick_id, type, note, strength, waypoints"),
     supabase.from("media_assets").select("id, trick_id, type, storage_path, duration, credit, consent_checked"),
     supabase.from("trick_map_positions").select("trick_id, x, y")
   ]);
@@ -195,7 +196,8 @@ function mapAtlasRows({
       toTrickId: relation.to_trick_id,
       type: relation.type,
       note: relation.note,
-      strength: normalizeRating(relation.strength)
+      strength: normalizeRating(relation.strength),
+      waypoints: normalizeWaypoints(relation.waypoints)
     }));
 
   const mappedMedia = mediaRows
@@ -271,6 +273,21 @@ function mapMedia(row: MediaRow): MediaAsset {
 
 function normalizeRating(value: number): 1 | 2 | 3 | 4 | 5 {
   return Math.max(1, Math.min(5, value)) as 1 | 2 | 3 | 4 | 5;
+}
+
+function normalizeWaypoints(value: unknown): RelationWaypoint[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const point = item as Record<string, unknown>;
+      if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) return null;
+      return {
+        x: Math.round(point.x as number),
+        y: Math.round(point.y as number)
+      };
+    })
+    .filter((point): point is RelationWaypoint => Boolean(point));
 }
 
 function makeOptions(tricks: Trick[]) {

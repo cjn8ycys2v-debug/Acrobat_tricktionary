@@ -205,7 +205,7 @@ export function getSourceById(id: string) {
 
 export function getRelations(): TrickRelation[] {
   return data.relations
-    .map((relation, index) => {
+    .map((relation, index): TrickRelation | null => {
       const from = trickByName.get(relation.from);
       const to = trickByName.get(relation.to);
       if (!from || !to) return null;
@@ -215,7 +215,8 @@ export function getRelations(): TrickRelation[] {
         toTrickId: to.id,
         type: relation.type,
         note: relation.note,
-        strength: relation.strength
+        strength: relation.strength,
+        waypoints: []
       } satisfies TrickRelation;
     })
     .filter((relation): relation is TrickRelation => Boolean(relation));

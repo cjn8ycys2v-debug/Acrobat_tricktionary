@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAdminAccessState } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { RelationType } from "@/lib/types";
+import type { RelationType, RelationWaypoint } from "@/lib/types";
 
 type BulkRelationInput = {
   fromTrickId: string;
@@ -9,6 +9,7 @@ type BulkRelationInput = {
   type: RelationType;
   note: string;
   strength: 1 | 2 | 3 | 4 | 5;
+  waypoints: RelationWaypoint[];
 };
 
 export async function PUT(request: Request) {
@@ -54,14 +55,16 @@ export async function PUT(request: Request) {
       to_trick_id: body.trickId,
       type: "prerequisite",
       note: "管理画面から登録",
-      strength: 3
+      strength: 3,
+      waypoints: []
     })),
     ...outgoingAdvancedIds.map((toId) => ({
       from_trick_id: body.trickId,
       to_trick_id: toId,
       type: "progression",
       note: "管理画面から登録",
-      strength: 3
+      strength: 3,
+      waypoints: []
     }))
   ];
 
@@ -99,7 +102,8 @@ export async function PATCH(request: Request) {
     to_trick_id: relation.toTrickId,
     type: relation.type,
     note: relation.note,
-    strength: relation.strength
+    strength: relation.strength,
+    waypoints: relation.waypoints
   }));
 
   if (rows.length) {
@@ -136,9 +140,25 @@ function normalizeBulkRelations(value: unknown): BulkRelationInput[] {
       toTrickId: input.toTrickId,
       type: input.type as RelationType,
       note: typeof input.note === "string" ? input.note : "",
-      strength
+      strength,
+      waypoints: normalizeWaypoints(input.waypoints)
     });
   }
 
   return relations;
+}
+
+function normalizeWaypoints(value: unknown): RelationWaypoint[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const point = item as Record<string, unknown>;
+      if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) return null;
+      return {
+        x: Math.round(point.x as number),
+        y: Math.round(point.y as number)
+      };
+    })
+    .filter((point): point is RelationWaypoint => Boolean(point));
 }

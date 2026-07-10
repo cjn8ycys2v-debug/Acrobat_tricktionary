@@ -217,7 +217,8 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
             toTrickId,
             type: kind === "base" ? "prerequisite" : "progression",
             note: "管理画面で選択",
-            strength: 3
+            strength: 3,
+            waypoints: []
           }
         ) satisfies TrickRelation;
       });

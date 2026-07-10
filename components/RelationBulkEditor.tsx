@@ -76,7 +76,8 @@ export function RelationBulkEditor({ tricks, relations, onRelationsChange, proto
           toTrickId: relation.toTrickId,
           type: relation.type,
           note: relation.note,
-          strength: relation.strength
+          strength: relation.strength,
+          waypoints: relation.waypoints
         }))
       })
     });
@@ -257,7 +258,8 @@ function parseRelations(text: string, trickByName: Map<string, Trick>) {
         toTrickId: to.id,
         type,
         note,
-        strength
+        strength,
+        waypoints: []
       });
     });
 

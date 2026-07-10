@@ -65,6 +65,7 @@ create table public.trick_relations (
   type public.relation_type not null,
   note text not null default '',
   strength int not null default 3 check (strength between 1 and 5),
+  waypoints jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now(),
   constraint trick_relations_no_self check (from_trick_id <> to_trick_id),
   constraint trick_relations_unique unique (from_trick_id, to_trick_id, type)

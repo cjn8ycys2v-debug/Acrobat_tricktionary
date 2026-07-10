@@ -15,10 +15,11 @@ import {
   type Connection
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { GitBranch, MousePointer2, RotateCcw, Save } from "lucide-react";
+import { GitBranch, MousePointer2, Plus, RotateCcw, Save, Trash2 } from "lucide-react";
+import { RouteEdge, type RouteEdgeData } from "@/components/RouteEdge";
 import { makeDirectSkillTreeRelations, makeLevelColumnLayoutMap } from "@/lib/map-layout";
 import { sortFamilies } from "@/lib/taxonomy";
-import type { RelationType, Trick, TrickMapPosition, TrickRelation } from "@/lib/types";
+import type { RelationType, RelationWaypoint, Trick, TrickMapPosition, TrickRelation } from "@/lib/types";
 import { relationLabel } from "@/lib/utils";
 
 const editorLayoutStorageKey = "dd-acro-editor-map-layout-v2";
@@ -31,6 +32,12 @@ const edgeColors: Record<RelationType, string> = {
 };
 
 const familyColors = ["#24514a", "#d76147", "#317aa3", "#8a5bbf", "#c48a1b", "#bf3f6f", "#455a64", "#6b7f2a"];
+const adminNodeWidth = 222;
+const adminNodeCenterY = 40;
+
+const edgeTypes = {
+  route: RouteEdge
+};
 
 type Props = {
   tricks: Trick[];
@@ -45,6 +52,7 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
   const [message, setMessage] = useState("カードをドラッグして、編集者用の公式配置を作れます。");
   const [layoutText, setLayoutText] = useState("");
   const [newRelationType, setNewRelationType] = useState<RelationType>("progression");
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
 
   const trickById = useMemo(() => new Map(tricks.map((trick) => [trick.id, trick])), [tricks]);
   const visibleTricks = useMemo(() => {
@@ -64,6 +72,37 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
 
   const autoNodes = useMemo(() => makeNodes(visibleTricks, visibleRelations, mapPositions, familyByName), [familyByName, mapPositions, visibleRelations, visibleTricks]);
 
+  const updateRelationWaypoints = useCallback(
+    (relationId: string, updater: (waypoints: RelationWaypoint[]) => RelationWaypoint[]) => {
+      onRelationsChange(
+        relations.map((relation) =>
+          relation.id === relationId
+            ? {
+                ...relation,
+                waypoints: updater(relation.waypoints ?? []).map(snapWaypoint)
+              }
+            : relation
+        )
+      );
+    },
+    [onRelationsChange, relations]
+  );
+
+  const updateWaypoint = useCallback(
+    (relationId: string, index: number, point: RelationWaypoint) => {
+      updateRelationWaypoints(relationId, (waypoints) => waypoints.map((waypoint, waypointIndex) => (waypointIndex === index ? point : waypoint)));
+    },
+    [updateRelationWaypoints]
+  );
+
+  const deleteWaypoint = useCallback(
+    (relationId: string, index: number) => {
+      updateRelationWaypoints(relationId, (waypoints) => waypoints.filter((_, waypointIndex) => waypointIndex !== index));
+      setMessage("中継点を削除しました。DBに反映するには「線を保存」を押してください。");
+    },
+    [updateRelationWaypoints]
+  );
+
   const edges: Edge[] = useMemo(
     () =>
       visibleRelations
@@ -72,16 +111,19 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
           id: relation.id,
           source: relation.fromTrickId,
           target: relation.toTrickId,
-          type: "smoothstep",
-          label: relationLabel(relation.type),
+          type: "route",
           markerEnd: { type: MarkerType.ArrowClosed, color: edgeColors[relation.type] },
-          style: { stroke: edgeColors[relation.type], strokeWidth: 2.2 },
-          labelStyle: { fontWeight: 800, fill: "#2d3035" },
-          labelBgPadding: [6, 3],
-          labelBgBorderRadius: 6,
-          labelBgStyle: { fill: "#fffaf0", fillOpacity: 0.96 }
+          data: {
+            label: relationLabel(relation.type),
+            color: edgeColors[relation.type],
+            active: selectedEdgeId === relation.id,
+            editable: selectedEdgeId === relation.id,
+            waypoints: relation.waypoints,
+            onWaypointChange: updateWaypoint,
+            onWaypointDelete: deleteWaypoint
+          } satisfies RouteEdgeData
         })),
-    [trickById, visibleRelations]
+    [deleteWaypoint, selectedEdgeId, trickById, updateWaypoint, visibleRelations]
   );
 
   useEffect(() => {
@@ -99,6 +141,12 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
     setLayoutText(exportLayout(nodes, trickById));
   }, [nodes, trickById]);
 
+  useEffect(() => {
+    if (selectedEdgeId && !visibleRelations.some((relation) => relation.id === selectedEdgeId)) {
+      setSelectedEdgeId(null);
+    }
+  }, [selectedEdgeId, visibleRelations]);
+
   const onNodesChange = useCallback((changes: NodeChange[]) => {
     setNodes((current) => applyNodeChanges(changes, current));
   }, []);
@@ -107,6 +155,7 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
     (deletedEdges: Edge[]) => {
       const deletedIds = new Set(deletedEdges.map((edge) => edge.id));
       onRelationsChange(relations.filter((relation) => !deletedIds.has(relation.id)));
+      setSelectedEdgeId((current) => (current && deletedIds.has(current) ? null : current));
       setMessage(`${deletedEdges.length}本の線を削除しました。DBに反映するには「線を保存」を押してください。`);
     },
     [onRelationsChange, relations]
@@ -130,9 +179,11 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
         toTrickId: connection.target,
         type: newRelationType,
         note: "配置タブで追加",
-        strength: 3
+        strength: 3,
+        waypoints: []
       };
       onRelationsChange([...relations, relation]);
+      setSelectedEdgeId(relation.id);
       const from = trickById.get(connection.source)?.name ?? "元の技";
       const to = trickById.get(connection.target)?.name ?? "次の技";
       setMessage(`${from} → ${to} を${relationLabel(newRelationType)}として追加しました。DBに反映するには「線を保存」を押してください。`);
@@ -149,6 +200,36 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
       })),
     [nodes]
   );
+
+  const selectedRelation = useMemo(() => relations.find((relation) => relation.id === selectedEdgeId) ?? null, [relations, selectedEdgeId]);
+
+  function addWaypointToSelected() {
+    if (!selectedRelation) {
+      setMessage("先に編集したい線をクリックしてください。");
+      return;
+    }
+
+    const sourceNode = nodes.find((node) => node.id === selectedRelation.fromTrickId);
+    const targetNode = nodes.find((node) => node.id === selectedRelation.toTrickId);
+    const sourceAnchor = sourceNode ? { x: sourceNode.position.x + adminNodeWidth, y: sourceNode.position.y + adminNodeCenterY } : { x: 0, y: 0 };
+    const targetAnchor = targetNode ? { x: targetNode.position.x, y: targetNode.position.y + adminNodeCenterY } : { x: sourceAnchor.x + 260, y: sourceAnchor.y };
+
+    updateRelationWaypoints(selectedRelation.id, (waypoints) => {
+      const start = waypoints[waypoints.length - 1] ?? sourceAnchor;
+      return [...waypoints, midpoint(start, targetAnchor)];
+    });
+    setMessage("中継点を追加しました。丸をドラッグすると線の通り道を調整できます。");
+  }
+
+  function clearSelectedWaypoints() {
+    if (!selectedRelation) {
+      setMessage("先に編集したい線をクリックしてください。");
+      return;
+    }
+
+    updateRelationWaypoints(selectedRelation.id, () => []);
+    setMessage("選択中の線の中継点を全削除しました。DBに反映するには「線を保存」を押してください。");
+  }
 
   async function saveLayout() {
     if (prototypeMode) {
@@ -181,7 +262,8 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
           toTrickId: relation.toTrickId,
           type: relation.type,
           note: relation.note,
-          strength: relation.strength
+          strength: relation.strength,
+          waypoints: relation.waypoints
         }))
       })
     });
@@ -219,6 +301,9 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
     }
   }
 
+  const selectedFromName = selectedRelation ? (trickById.get(selectedRelation.fromTrickId)?.name ?? selectedRelation.fromTrickId) : "";
+  const selectedToName = selectedRelation ? (trickById.get(selectedRelation.toTrickId)?.name ?? selectedRelation.toTrickId) : "";
+
   return (
     <section className="rounded border border-ink/10 bg-white p-4 shadow-sm sm:p-5">
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -228,7 +313,7 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
             公式スキルツリー配置
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-graphite/76">
-            編集者用です。カードはドラッグ、右端から左端へ線を引くと前提・派生を追加できます。線は選択してDelete/Backspaceで削除できます。
+            編集者用です。カードはドラッグ、右端から左端へ線を引くと前提・派生を追加できます。線をクリックすると通り道の中継点も編集できます。
           </p>
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
@@ -280,8 +365,14 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
           <ReactFlow
             nodes={nodes}
             edges={edges}
+            edgeTypes={edgeTypes}
             onNodesChange={onNodesChange}
             onConnect={onConnect}
+            onEdgeClick={(_, edge) => {
+              setSelectedEdgeId(edge.id);
+              setMessage("線を選択しました。中継点を追加して、丸をドラッグすると通り道を調整できます。");
+            }}
+            onPaneClick={() => setSelectedEdgeId(null)}
             onEdgesDelete={onEdgesDelete}
             deleteKeyCode={["Backspace", "Delete"]}
             fitView
@@ -299,6 +390,78 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
         </div>
 
         <div className="grid gap-3">
+          <div className="rounded border border-ink/10 bg-paper p-3">
+            <p className="text-xs font-black text-graphite/62">線の手動編集</p>
+            {selectedRelation ? (
+              <div className="mt-2">
+                <p className="text-sm font-black leading-5 text-ink">
+                  {selectedFromName} → {selectedToName}
+                </p>
+                <p className="mt-1 text-xs font-semibold text-graphite/68">
+                  {relationLabel(selectedRelation.type)} / 中継点 {selectedRelation.waypoints.length}個
+                </p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+                  <button
+                    type="button"
+                    onClick={addWaypointToSelected}
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded bg-pine px-3 text-sm font-black text-white transition hover:bg-ink"
+                  >
+                    <Plus aria-hidden className="size-4" />
+                    中継点を追加
+                  </button>
+                  <button
+                    type="button"
+                    onClick={clearSelectedWaypoints}
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded border border-ink/14 bg-white px-3 text-sm font-black text-graphite transition hover:border-coral hover:text-coral"
+                  >
+                    <Trash2 aria-hidden className="size-4" />
+                    中継点を全削除
+                  </button>
+                </div>
+                {selectedRelation.waypoints.length ? (
+                  <div className="mt-3 grid gap-2">
+                    {selectedRelation.waypoints.map((point, index) => (
+                      <div key={`${selectedRelation.id}-${index}`} className="grid grid-cols-[auto_1fr_1fr_auto] items-center gap-2 rounded bg-white p-2">
+                        <span className="text-xs font-black text-graphite/58">{index + 1}</span>
+                        <label className="min-w-0 text-[10px] font-black text-graphite/58">
+                          X
+                          <input
+                            type="number"
+                            value={Math.round(point.x)}
+                            onChange={(event) => updateWaypoint(selectedRelation.id, index, { x: Number(event.target.value), y: point.y })}
+                            className="mt-1 h-8 w-full rounded border border-ink/10 bg-paper px-2 text-xs font-black text-ink outline-none focus:border-pine"
+                          />
+                        </label>
+                        <label className="min-w-0 text-[10px] font-black text-graphite/58">
+                          Y
+                          <input
+                            type="number"
+                            value={Math.round(point.y)}
+                            onChange={(event) => updateWaypoint(selectedRelation.id, index, { x: point.x, y: Number(event.target.value) })}
+                            className="mt-1 h-8 w-full rounded border border-ink/10 bg-paper px-2 text-xs font-black text-ink outline-none focus:border-pine"
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          aria-label={`中継点${index + 1}を削除`}
+                          onClick={() => deleteWaypoint(selectedRelation.id, index)}
+                          className="mt-4 grid size-8 place-items-center rounded border border-ink/10 bg-paper text-graphite transition hover:border-coral hover:text-coral"
+                        >
+                          <Trash2 aria-hidden className="size-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-3 rounded bg-white px-3 py-2 text-xs font-semibold leading-5 text-graphite/68">
+                    中継点なし。追加すると線上に丸が出て、ドラッグで曲げられます。
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="mt-2 text-xs font-semibold leading-5 text-graphite/68">線をクリックすると、曲げるための中継点を追加・削除できます。</p>
+            )}
+          </div>
           <div className="rounded border border-ink/10 bg-paper p-3">
             <p className="text-xs font-black text-graphite/62">配置JSON</p>
             <p className="mt-1 text-xs leading-5 text-graphite/72">手で数値調整したい場合は編集して反映できます。</p>
@@ -339,7 +502,7 @@ function makeNodes(tricks: Trick[], relations: TrickRelation[], positions: Trick
         targetPosition: Position.Left,
         data: { label: `${trick.name}\nLv.${trick.level} / ${trick.discipline} / ${trick.family}` },
         style: {
-          width: 222,
+          width: adminNodeWidth,
           borderColor: color,
           background: "#ffffff",
           borderWidth: 2,
@@ -373,4 +536,18 @@ function readStoredPositions(): TrickMapPosition[] {
   } catch {
     return [];
   }
+}
+
+function snapWaypoint(point: RelationWaypoint): RelationWaypoint {
+  return {
+    x: Math.round(point.x / 10) * 10,
+    y: Math.round(point.y / 10) * 10
+  };
+}
+
+function midpoint(start: RelationWaypoint, end: RelationWaypoint): RelationWaypoint {
+  return snapWaypoint({
+    x: (start.x + end.x) / 2,
+    y: (start.y + end.y) / 2
+  });
 }

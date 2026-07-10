@@ -49,6 +49,12 @@ export type TrickRelation = {
   type: RelationType;
   note: string;
   strength: 1 | 2 | 3 | 4 | 5;
+  waypoints: RelationWaypoint[];
+};
+
+export type RelationWaypoint = {
+  x: number;
+  y: number;
 };
 
 export type TrickMapPosition = {

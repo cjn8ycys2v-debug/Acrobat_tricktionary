@@ -18,6 +18,7 @@ import {
 import { CheckCircle2, Circle, RotateCcw, Search, Sparkles, Trophy } from "lucide-react";
 import "@xyflow/react/dist/style.css";
 import { isPrimarySkillRelation, makeDirectSkillTreeRelations, makeLevelColumnLayoutMap } from "@/lib/map-layout";
+import { RouteEdge, type RouteEdgeData } from "@/components/RouteEdge";
 import { sortDisciplines, sortFamilies } from "@/lib/taxonomy";
 import type { RelationType, Trick, TrickMapPosition, TrickRelation } from "@/lib/types";
 import { relationLabel } from "@/lib/utils";
@@ -63,6 +64,10 @@ type SkillTreeNode = Node<SkillNodeData, "skill">;
 
 const nodeTypes = {
   skill: SkillNode
+};
+
+const edgeTypes = {
+  route: RouteEdge
 };
 
 export function LearningMap({
@@ -283,24 +288,15 @@ export function LearningMap({
           id: relation.id,
           source: relation.fromTrickId,
           target: relation.toTrickId,
-          type: "smoothstep",
-          label: relationLabel(relation.type),
+          type: "route",
           markerEnd: { type: MarkerType.ArrowClosed, color: edgeStyle.color },
-          style: {
-            stroke: edgeStyle.color,
-            strokeWidth: isConnected ? 4 : 2.4,
-            opacity: isDimmed ? 0.16 : 0.95
-          },
-          labelStyle: {
-            fontWeight: 800,
-            fill: isDimmed ? "rgba(45,48,53,.36)" : "#2d3035"
-          },
-          labelBgPadding: [7, 4],
-          labelBgBorderRadius: 6,
-          labelBgStyle: {
-            fill: isDimmed ? "rgba(246,242,234,.64)" : "#fffaf0",
-            fillOpacity: 0.96
-          }
+          data: {
+            label: relationLabel(relation.type),
+            color: edgeStyle.color,
+            dimmed: isDimmed,
+            active: isConnected,
+            waypoints: relation.waypoints
+          } satisfies RouteEdgeData
         };
       }),
     [activeNodeId, graphRelations]
@@ -541,6 +537,7 @@ export function LearningMap({
             nodes={nodes}
             edges={edges}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
             fitView={!isCompactViewport}
             fitViewOptions={{ padding: 0.18 }}
             defaultViewport={isCompactViewport ? { x: 18, y: 32, zoom: 0.78 } : undefined}
