@@ -37,7 +37,21 @@ export function TrickExplorer({ tricks, options }: Props) {
     const normalizedQuery = query.trim().toLowerCase();
     return tricks
       .filter((trick) => {
-        const haystack = [trick.name, ...trick.aliases, trick.summary, trick.discipline, trick.family, trick.axis, ...trick.tags]
+        const haystack = [
+          trick.name,
+          ...trick.aliases,
+          trick.summary,
+          trick.description,
+          trick.originNote,
+          ...trick.practiceSteps,
+          ...trick.commonMistakes,
+          ...trick.safetyNotes,
+          trick.coachComment,
+          trick.discipline,
+          trick.family,
+          trick.axis,
+          ...trick.tags
+        ]
           .join(" ")
           .toLowerCase();
 

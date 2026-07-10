@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, GitBranch, PlayCircle, ShieldAlert } from "lucide-react";
+import { ArrowLeft, BookOpenText, ClipboardList, GitBranch, Lightbulb, PlayCircle, ShieldAlert, TriangleAlert, type LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 import { MetricDots } from "@/components/MetricDots";
 import { allTricks } from "@/lib/atlas";
 import { getPublicAtlasContent } from "@/lib/repository";
@@ -59,6 +60,27 @@ export default async function TrickDetailPage({ params }: { params: Promise<{ sl
             <Info label="縄文脈" value={trick.ropeContext} />
           </div>
           <p className="mt-6 leading-8 text-graphite">{trick.description}</p>
+          <div className="mt-7 border-t border-ink/8 pt-6">
+            <h2 className="mb-4 flex items-center gap-2 text-base font-black text-ink">
+              <BookOpenText aria-hidden className="size-5 text-pine" />
+              図鑑メモ
+            </h2>
+            <div className="grid gap-5">
+              {trick.originNote ? (
+                <KnowledgeBlock icon={Lightbulb} title="発祥・由来" tone="pine">
+                  <p className="text-sm leading-7 text-graphite/82">{trick.originNote}</p>
+                </KnowledgeBlock>
+              ) : null}
+              <KnowledgeList icon={ClipboardList} title="練習ステップ" items={trick.practiceSteps} tone="saffron" />
+              <KnowledgeList icon={TriangleAlert} title="よくある失敗" items={trick.commonMistakes} tone="coral" />
+              <KnowledgeList icon={ShieldAlert} title="安全注意" items={trick.safetyNotes} tone="ink" />
+              {trick.coachComment ? (
+                <KnowledgeBlock icon={BookOpenText} title="監修者コメント" tone="graphite">
+                  <p className="text-sm leading-7 text-graphite/82">{trick.coachComment}</p>
+                </KnowledgeBlock>
+              ) : null}
+            </div>
+          </div>
           <div className="mt-6 flex flex-wrap gap-2">
             {trick.tags.map((tag) => (
               <span key={tag} className="rounded bg-paper px-2.5 py-1 text-xs font-bold text-graphite">
@@ -103,6 +125,62 @@ export default async function TrickDetailPage({ params }: { params: Promise<{ sl
         </aside>
       </div>
     </main>
+  );
+}
+
+function KnowledgeBlock({
+  icon: Icon,
+  title,
+  tone,
+  children
+}: {
+  icon: LucideIcon;
+  title: string;
+  tone: "pine" | "saffron" | "coral" | "ink" | "graphite";
+  children: ReactNode;
+}) {
+  const toneClass = {
+    pine: "border-pine/35 text-pine",
+    saffron: "border-saffron/60 text-saffron",
+    coral: "border-coral/45 text-coral",
+    ink: "border-ink/35 text-ink",
+    graphite: "border-graphite/30 text-graphite"
+  }[tone];
+
+  return (
+    <section className={`border-l-4 pl-4 ${toneClass}`}>
+      <h3 className="mb-2 flex items-center gap-2 text-sm font-black text-ink">
+        <Icon aria-hidden className="size-4" />
+        {title}
+      </h3>
+      {children}
+    </section>
+  );
+}
+
+function KnowledgeList({
+  icon,
+  title,
+  items,
+  tone
+}: {
+  icon: LucideIcon;
+  title: string;
+  items: string[];
+  tone: "pine" | "saffron" | "coral" | "ink" | "graphite";
+}) {
+  if (!items.length) return null;
+  return (
+    <KnowledgeBlock icon={icon} title={title} tone={tone}>
+      <ol className="grid gap-2 text-sm leading-6 text-graphite/82">
+        {items.map((item, index) => (
+          <li key={`${title}-${item}`} className="grid grid-cols-[1.7rem_1fr] gap-2">
+            <span className="grid size-6 place-items-center rounded bg-paper text-xs font-black text-graphite/70">{index + 1}</span>
+            <span>{item}</span>
+          </li>
+        ))}
+      </ol>
+    </KnowledgeBlock>
   );
 }
 

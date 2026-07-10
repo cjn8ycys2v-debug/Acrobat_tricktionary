@@ -26,6 +26,11 @@ export type Trick = {
   aliases: string[];
   summary: string;
   description: string;
+  originNote: string;
+  practiceSteps: string[];
+  commonMistakes: string[];
+  safetyNotes: string[];
+  coachComment: string;
   difficulty: 1 | 2 | 3 | 4 | 5;
   riskLevel: 1 | 2 | 3 | 4 | 5;
   discipline: string;

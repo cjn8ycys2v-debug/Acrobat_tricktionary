@@ -577,7 +577,24 @@ export function LearningMap({
 }
 
 function matchesTrickQuery(trick: Trick, normalizedQuery: string) {
-  const searchable = [trick.name, trick.discipline, trick.family, trick.levelCategory, trick.axis, trick.takeoff, trick.landing, ...trick.aliases, ...trick.tags]
+  const searchable = [
+    trick.name,
+    trick.discipline,
+    trick.family,
+    trick.levelCategory,
+    trick.axis,
+    trick.takeoff,
+    trick.landing,
+    trick.summary,
+    trick.description,
+    trick.originNote,
+    ...trick.practiceSteps,
+    ...trick.commonMistakes,
+    ...trick.safetyNotes,
+    trick.coachComment,
+    ...trick.aliases,
+    ...trick.tags
+  ]
     .join(" ")
     .toLowerCase();
   return searchable.includes(normalizedQuery);

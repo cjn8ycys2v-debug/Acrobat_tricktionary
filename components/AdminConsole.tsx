@@ -65,6 +65,11 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
       aliases: [],
       summary: "新規下書き",
       description: "管理画面から説明を追加してください。",
+      originNote: "発祥・由来は監修後に追記してください。",
+      practiceSteps: [],
+      commonMistakes: [],
+      safetyNotes: [],
+      coachComment: "",
       difficulty: 1,
       riskLevel: 1,
       discipline: "ダブルダッチ",
@@ -141,6 +146,11 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
         aliases: selected.aliases,
         summary: selected.summary,
         description: selected.description,
+        originNote: selected.originNote,
+        practiceSteps: selected.practiceSteps,
+        commonMistakes: selected.commonMistakes,
+        safetyNotes: selected.safetyNotes,
+        coachComment: selected.coachComment,
         difficulty: selected.difficulty,
         riskLevel: selected.riskLevel,
         discipline: selected.discipline,
@@ -434,6 +444,36 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
                       className="min-h-40 w-full rounded border border-ink/14 bg-paper px-3 py-2 text-sm leading-6 outline-none focus:border-pine"
                     />
                   </Panel>
+
+                  <Panel icon={Database} title="図鑑メモ">
+                    <div className="grid gap-4">
+                      <LongTextField
+                        label="発祥・由来"
+                        value={selected.originNote}
+                        onChange={(value) => updateSelected("originNote", value)}
+                      />
+                      <TextListField
+                        label="練習ステップ"
+                        values={selected.practiceSteps}
+                        onChange={(value) => updateSelected("practiceSteps", value)}
+                      />
+                      <TextListField
+                        label="よくある失敗"
+                        values={selected.commonMistakes}
+                        onChange={(value) => updateSelected("commonMistakes", value)}
+                      />
+                      <TextListField
+                        label="安全注意"
+                        values={selected.safetyNotes}
+                        onChange={(value) => updateSelected("safetyNotes", value)}
+                      />
+                      <LongTextField
+                        label="監修者コメント"
+                        value={selected.coachComment}
+                        onChange={(value) => updateSelected("coachComment", value)}
+                      />
+                    </div>
+                  </Panel>
                 </div>
 
                 <div className="grid gap-4">
@@ -591,6 +631,33 @@ function ListField({ label, values, onChange }: { label: string; values: string[
         value={values.join(", ")}
         onChange={(event) => onChange(splitList(event.target.value))}
         className="h-11 w-full rounded border border-ink/14 bg-paper px-3 text-sm outline-none focus:border-pine"
+      />
+    </label>
+  );
+}
+
+function LongTextField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <label>
+      <span className="mb-2 block text-sm font-bold text-ink">{label}</span>
+      <textarea
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="min-h-24 w-full rounded border border-ink/14 bg-paper px-3 py-2 text-sm leading-6 outline-none focus:border-pine"
+      />
+    </label>
+  );
+}
+
+function TextListField({ label, values, onChange }: { label: string; values: string[]; onChange: (value: string[]) => void }) {
+  return (
+    <label>
+      <span className="mb-2 block text-sm font-bold text-ink">{label}</span>
+      <textarea
+        value={values.join("\n")}
+        onChange={(event) => onChange(splitLines(event.target.value))}
+        placeholder="1行に1項目ずつ入力"
+        className="min-h-28 w-full rounded border border-ink/14 bg-paper px-3 py-2 text-sm leading-6 outline-none focus:border-pine"
       />
     </label>
   );
@@ -902,6 +969,13 @@ function VideoUpload({ onValidate, message }: { onValidate: (file: File | undefi
 function splitList(value: string) {
   return value
     .split(/[\n,、]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function splitLines(value: string) {
+  return value
+    .split(/\n/)
     .map((item) => item.trim())
     .filter(Boolean);
 }

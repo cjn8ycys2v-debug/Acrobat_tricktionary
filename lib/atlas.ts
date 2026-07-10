@@ -147,6 +147,57 @@ function makeDescription(name: string, level: number, category: string, passCond
   )} 前提技・派生技・近い技は相関図で確認できます。`;
 }
 
+function makeOriginNote(name: string, family: string, discipline: string) {
+  const disciplineNote =
+    discipline === "ダブルダッチ"
+      ? "ダブルダッチの縄内リズムやロープとの距離感から見た技として整理しています。"
+      : `${discipline}で使われる身体操作を、ダブルダッチの縄内で扱いやすいように分類しています。`;
+  const familyNote =
+    family === "ブレイキン・床回転"
+      ? "床支持、重心移動、回転継続の考え方を背景に見ると理解しやすい系統です。"
+      : family === "トリッキング"
+        ? "蹴り技、宙返り、ひねりをつなぐトリッキング文脈で見られる斜めの軌道が鍵になります。"
+        : family === "空中回転" || family === "ひねり"
+          ? "体操やトリッキングの空中姿勢を、縄のテンポに合わせて使う発展系として扱います。"
+          : family === "倒立・床基礎"
+            ? "体操の基礎姿勢や床運動の受け身を、縄内の安定感につなげるための土台です。"
+            : "この図鑑では、前提技から発展技へ進むための学習上の位置づけを重視しています。";
+  return `${name}の厳密な発祥・初出は監修時に追記します。${disciplineNote}${familyNote}`;
+}
+
+function makePracticeSteps(name: string, family: string, discipline: string) {
+  if (family === "基礎ムーブ") return ["縄なしで足順とリズムを確認する", "低速の縄で入る位置と抜ける位置を固定する", "音楽テンポでも姿勢が崩れないか確認する"];
+  if (family === "倒立・床基礎") return ["マット上で形と受け身を確認する", "肩と体幹を締めたまま静止または移動する", "縄内では入る前後の姿勢までセットで練習する"];
+  if (family === "側方・反発") return ["手を着く位置と目線を決める", "腰の通り道と着地足をそろえる", "ロンダートやバク転など次の技へつなぐ反発を確認する"];
+  if (family === "空中回転") return ["踏切だけを分けて高さを作る", "補助やマットで回転姿勢を確認する", "着地方向を決めてから縄内のタイミングに合わせる"];
+  if (family === "ひねり") return ["ひねりを入れない前提技を安定させる", "目線と肩の開きを小さく確認する", "着地の向きを決めてから回転量を増やす"];
+  if (family === "ブレイキン・床回転") return ["床で支持点と重心移動を確認する", "回転を止めずに次の支持点へ乗せる", "縄内では回転幅とロープ接触の余裕を見る"];
+  if (family === "トリッキング" || discipline === "カポエイラ") return ["入りのステップをゆっくり確認する", "蹴り上げや片足踏切の軌道をそろえる", "着地後に次の動きへ流せるか確認する"];
+  if (/連続|オリジナル/.test(name)) return ["単体技をそれぞれ成功率高くそろえる", "つなぎの足順と向きを決める", "動画で流れと見え方を確認する"];
+  return ["縄なしで形を確認する", "低速でタイミングを合わせる", "相関図で前提技と派生技を確認する"];
+}
+
+function makeCommonMistakes(family: string) {
+  if (family === "基礎ムーブ") return ["足順だけを追って上体が遅れる", "ロープを見る時間が長くなりリズムが止まる"];
+  if (family === "倒立・床基礎") return ["肩が抜けて腰が反る", "手を着く位置が近すぎて受け身が狭くなる"];
+  if (family === "側方・反発") return ["手の着地位置がずれて進行方向が曲がる", "着地で沈み込みすぎて次の反発が消える"];
+  if (family === "空中回転") return ["踏切前に急いで高さが出ない", "着地を見る前に体をほどいてしまう"];
+  if (family === "ひねり") return ["ひねり出しが早すぎて高さが落ちる", "目線と肩が開きすぎて着地方向がずれる"];
+  if (family === "ブレイキン・床回転") return ["支持点が流れて回転軸が大きくぶれる", "床との距離感が狭くなりロープに近づきすぎる"];
+  return ["入りのタイミングが毎回変わる", "成功後の抜け方まで決めていない"];
+}
+
+function makeSafetyNotes(family: string, level: number) {
+  const base = level >= 7 ? ["初回は補助者とマットを用意する", "疲労時は回転量やひねり量を増やさない"] : ["痛みがある日は無理に通さない"];
+  if (family === "倒立・床基礎" || family === "ブレイキン・床回転") return [...base, "手首、肩、首に負担が出る形はすぐに止める"];
+  if (family === "空中回転" || family === "ひねり" || family === "側方・反発") return [...base, "着地点の周囲とロープ位置を確認してから入る"];
+  return [...base, "ターン側と入る位置を共有してから練習する"];
+}
+
+function makeCoachComment(family: string) {
+  return `監修メモ未設定。${family}系として、成功条件・補助方法・縄内での注意点を監修後に追記してください。`;
+}
+
 export function getAllTricks(): Trick[] {
   const seen = new Map<string, Trick>();
   let index = 0;
@@ -165,6 +216,11 @@ export function getAllTricks(): Trick[] {
         aliases: [],
         summary: makeSummary(name, level.level, family, discipline),
         description: makeDescription(name, level.level, level.category, level.passCondition, family, discipline),
+        originNote: makeOriginNote(name, family, discipline),
+        practiceSteps: makePracticeSteps(name, family, discipline),
+        commonMistakes: makeCommonMistakes(family),
+        safetyNotes: makeSafetyNotes(family, level.level),
+        coachComment: makeCoachComment(family),
         difficulty: difficultyByLevel.get(level.level) ?? clampLevel(Math.ceil(level.level / 2)),
         riskLevel: riskByLevel.get(level.level) ?? clampLevel(Math.ceil(level.level / 2)),
         discipline,

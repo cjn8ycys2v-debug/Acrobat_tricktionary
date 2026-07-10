@@ -20,6 +20,11 @@ type TrickRow = {
   aliases: string[];
   summary: string;
   description: string;
+  origin_note?: string | null;
+  practice_steps?: string[] | null;
+  common_mistakes?: string[] | null;
+  safety_notes?: string[] | null;
+  coach_comment?: string | null;
   difficulty: number;
   risk_level: number;
   discipline?: string | null;
@@ -246,6 +251,11 @@ function mapTrick(row: TrickRow, sourceKeyByUuid: Map<string, string>): Trick {
     aliases: row.aliases ?? [],
     summary: row.summary,
     description: row.description,
+    originNote: row.origin_note ?? "",
+    practiceSteps: row.practice_steps ?? [],
+    commonMistakes: row.common_mistakes ?? [],
+    safetyNotes: row.safety_notes ?? [],
+    coachComment: row.coach_comment ?? "",
     difficulty: normalizeRating(row.difficulty),
     riskLevel: normalizeRating(row.risk_level),
     discipline: row.discipline ?? deriveDiscipline(row.name, row.family),

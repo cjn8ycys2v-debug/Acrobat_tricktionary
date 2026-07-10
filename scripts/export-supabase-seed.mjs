@@ -99,6 +99,33 @@ function levelRole(level) {
   return "十分な前提技が必要な高難度";
 }
 
+function originNote(name, fam, disc) {
+  const disciplineNote =
+    disc === "ダブルダッチ"
+      ? "ダブルダッチの縄内リズムやロープとの距離感から見た技として整理しています。"
+      : `${disc}で使われる身体操作を、ダブルダッチの縄内で扱いやすいように分類しています。`;
+  return `${name}の厳密な発祥・初出は監修時に追記します。${disciplineNote}${fam}系として、前提技から発展技へ進む学習上の位置づけを重視しています。`;
+}
+
+function practiceSteps(fam) {
+  if (fam === "基礎ムーブ") return ["縄なしで足順とリズムを確認する", "低速の縄で入る位置と抜ける位置を固定する", "音楽テンポでも姿勢が崩れないか確認する"];
+  if (fam === "倒立・床基礎") return ["マット上で形と受け身を確認する", "肩と体幹を締めたまま静止または移動する", "縄内では入る前後の姿勢までセットで練習する"];
+  if (fam === "空中回転" || fam === "ひねり") return ["踏切だけを分けて高さを作る", "補助やマットで回転姿勢を確認する", "着地方向を決めてから縄内のタイミングに合わせる"];
+  return ["縄なしで形を確認する", "低速でタイミングを合わせる", "相関図で前提技と派生技を確認する"];
+}
+
+function commonMistakes(fam) {
+  if (fam === "空中回転" || fam === "ひねり") return ["踏切前に急いで高さが出ない", "着地を見る前に体をほどいてしまう"];
+  if (fam === "倒立・床基礎") return ["肩が抜けて腰が反る", "手を着く位置が近すぎて受け身が狭くなる"];
+  return ["入りのタイミングが毎回変わる", "成功後の抜け方まで決めていない"];
+}
+
+function safetyNotes(fam, level) {
+  const base = level >= 7 ? ["初回は補助者とマットを用意する", "疲労時は回転量やひねり量を増やさない"] : ["痛みがある日は無理に通さない"];
+  if (fam === "空中回転" || fam === "ひねり" || fam === "側方・反発") return [...base, "着地点の周囲とロープ位置を確認してから入る"];
+  return [...base, "ターン側と入る位置を共有してから練習する"];
+}
+
 const source = data.sources[0];
 const sourceUuid = "00000000-0000-4000-8000-000000000001";
 const trickUuids = new Map();
@@ -118,7 +145,7 @@ for (const level of data.levels) {
     const tags = [disc, fam, `Lv.${level.level}`];
     const practiceFocus = focus(name, fam, disc);
     lines.push(
-      `insert into public.tricks (id, slug, name, aliases, summary, description, difficulty, risk_level, discipline, family, axis, takeoff, landing, rope_context, tags, level, level_category, status, source_id, show_source) values (` +
+      `insert into public.tricks (id, slug, name, aliases, summary, description, origin_note, practice_steps, common_mistakes, safety_notes, coach_comment, difficulty, risk_level, discipline, family, axis, takeoff, landing, rope_context, tags, level, level_category, status, source_id, show_source) values (` +
         [
           sql(id),
           sql(slugFor(trickIndex, name)),
@@ -126,6 +153,11 @@ for (const level of data.levels) {
           "array[]::text[]",
           sql(`${disc} / ${fam}の${levelRole(level.level)}技。${practiceFocus}`),
           sql(`${name}は、${disc}の要素を持つ${fam}系の技です。レベル${level.level}「${level.category}」では「${level.passCondition}」が目安です。${practiceFocus} 前提技・派生技・近い技は相関図で確認できます。`),
+          sql(originNote(name, fam, disc)),
+          array(practiceSteps(fam)),
+          array(commonMistakes(fam)),
+          array(safetyNotes(fam, level.level)),
+          sql(`監修メモ未設定。${fam}系として、成功条件・補助方法・縄内での注意点を監修後に追記してください。`),
           difficultyByLevel.get(level.level) ?? 3,
           riskByLevel.get(level.level) ?? 3,
           sql(disc),
@@ -141,7 +173,7 @@ for (const level of data.levels) {
           sql(sourceUuid),
           "false"
         ].join(", ") +
-        ") on conflict (slug) do update set summary = excluded.summary, description = excluded.description, difficulty = excluded.difficulty, risk_level = excluded.risk_level, discipline = excluded.discipline, family = excluded.family, axis = excluded.axis, takeoff = excluded.takeoff, landing = excluded.landing, rope_context = excluded.rope_context, tags = excluded.tags, level = excluded.level, level_category = excluded.level_category, status = excluded.status, source_id = excluded.source_id;"
+        ") on conflict (slug) do update set summary = excluded.summary, description = excluded.description, origin_note = excluded.origin_note, practice_steps = excluded.practice_steps, common_mistakes = excluded.common_mistakes, safety_notes = excluded.safety_notes, coach_comment = excluded.coach_comment, difficulty = excluded.difficulty, risk_level = excluded.risk_level, discipline = excluded.discipline, family = excluded.family, axis = excluded.axis, takeoff = excluded.takeoff, landing = excluded.landing, rope_context = excluded.rope_context, tags = excluded.tags, level = excluded.level, level_category = excluded.level_category, status = excluded.status, source_id = excluded.source_id;"
     );
     trickIndex += 1;
   }
