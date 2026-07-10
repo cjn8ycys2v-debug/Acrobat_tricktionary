@@ -182,7 +182,16 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         slug: selected.slug,
-        mediaPaths: selectedVideos.map((asset) => asset.storagePath)
+        mediaAssets: selectedVideos.map((asset) => ({
+          storagePath: asset.storagePath,
+          referenceUrl: asset.referenceUrl,
+          referenceStartSec: asset.referenceStartSec,
+          referenceEndSec: asset.referenceEndSec,
+          rightsNote: asset.rightsNote,
+          duration: asset.duration,
+          credit: asset.credit,
+          consentChecked: asset.consentChecked
+        }))
       })
     });
     const mediaResult = await mediaResponse.json();
@@ -229,19 +238,30 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
     setRelationMessage(`${kind === "base" ? "基礎技" : "応用技"}を${validIds.length}件選択しました。保存するとDBへ反映します。`);
   }
 
-  function updateVideoPaths(value: string) {
+  function addVideoDraft() {
     if (!selected) return;
-    const paths = splitList(value);
     setMediaDrafts((current) => [
-      ...current.filter((asset) => asset.trickId !== selected.id),
-      ...paths.map((storagePath, index) => ({
-        id: `draft-media-${selected.id}-${index}`,
+      ...current,
+      {
+        id: `draft-media-${selected.id}-${Date.now()}`,
         trickId: selected.id,
         type: "video" as const,
-        storagePath,
-        consentChecked: true
-      }))
+        storagePath: "",
+        referenceUrl: "",
+        rightsNote: "",
+        consentChecked: false
+      }
     ]);
+    setVideoMessage("動画候補を追加しました。参考URLと秒数を入れ、公開用URLは自分の限定公開動画を入れてください。");
+  }
+
+  function updateVideoDraft(id: string, patch: Partial<MediaAsset>) {
+    setMediaDrafts((current) => current.map((asset) => (asset.id === id ? { ...asset, ...patch } : asset)));
+  }
+
+  function removeVideoDraft(id: string) {
+    setMediaDrafts((current) => current.filter((asset) => asset.id !== id));
+    setVideoMessage("動画候補を削除しました。保存するとDBへ反映します。");
   }
 
   async function handleVideo(file: File | undefined, consent: boolean) {
@@ -291,7 +311,6 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
 
   const selectedBaseIds = selectedBaseRelations.map((relation) => relation.fromTrickId);
   const selectedAdvancedIds = selectedAdvancedRelations.map((relation) => relation.toTrickId);
-  const selectedVideoPaths = selectedVideos.map((asset) => asset.storagePath);
 
   return (
     <div className="mx-auto max-w-7xl px-3 py-6 sm:px-6 sm:py-10 lg:px-8">
@@ -437,11 +456,11 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
                   </Panel>
 
                   <Panel icon={FileVideo} title="挿入動画">
-                    <textarea
-                      value={selectedVideoPaths.join("\n")}
-                      onChange={(event) => updateVideoPaths(event.target.value)}
-                      placeholder="Storage path または https:// で始まる動画URLを1行ずつ"
-                      className="min-h-28 w-full rounded border border-ink/14 bg-paper px-3 py-2 text-sm leading-6 outline-none focus:border-pine"
+                    <VideoReferenceEditor
+                      videos={selectedVideos}
+                      onAdd={addVideoDraft}
+                      onUpdate={updateVideoDraft}
+                      onRemove={removeVideoDraft}
                     />
                     <VideoUpload onValidate={handleVideo} message={videoMessage} />
                   </Panel>
@@ -466,7 +485,14 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
             <Panel icon={FileVideo} title="登録動画">
               <p className="mb-3 text-sm leading-6 text-graphite/76">選択中: {selectedVideos.length}件 / 全体: {mediaDrafts.length}件</p>
               <div className="max-h-40 overflow-auto rounded bg-paper p-2 text-xs leading-5 text-graphite">
-                {selectedVideos.length ? selectedVideos.map((asset) => <div key={asset.id}>{asset.storagePath}</div>) : "登録動画はまだありません。"}
+                {selectedVideos.length
+                  ? selectedVideos.map((asset) => (
+                      <div key={asset.id} className="border-b border-ink/8 py-1 last:border-0">
+                        <div className="font-bold">{asset.storagePath || "公開用URL未設定"}</div>
+                        {asset.referenceUrl ? <div className="text-graphite/62">参考: {asset.referenceUrl}</div> : null}
+                      </div>
+                    ))
+                  : "登録動画はまだありません。"}
               </div>
             </Panel>
             <Panel icon={Database} title="レベル表・出典">
@@ -739,6 +765,108 @@ function RelationPreview({ relations, tricks, selectedId }: { relations: TrickRe
           ))
         : "登録された相関はまだありません。"}
     </div>
+  );
+}
+
+function VideoReferenceEditor({
+  videos,
+  onAdd,
+  onUpdate,
+  onRemove
+}: {
+  videos: MediaAsset[];
+  onAdd: () => void;
+  onUpdate: (id: string, patch: Partial<MediaAsset>) => void;
+  onRemove: (id: string) => void;
+}) {
+  return (
+    <div className="grid gap-3">
+      <div className="rounded border border-saffron/35 bg-saffron/10 px-3 py-2 text-xs font-semibold leading-5 text-graphite/78">
+        参考URLは編集メモです。公開画面には、許諾済みの公開用URLまたはStorage動画だけを表示します。
+      </div>
+      {videos.length ? (
+        <div className="grid gap-3">
+          {videos.map((asset, index) => (
+            <section key={asset.id} className="rounded border border-ink/10 bg-paper p-3">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="text-xs font-black text-graphite/62">動画 {index + 1}</p>
+                <button
+                  type="button"
+                  onClick={() => onRemove(asset.id)}
+                  className="grid size-8 place-items-center rounded border border-ink/10 bg-white text-graphite transition hover:border-coral hover:text-coral"
+                  aria-label={`動画${index + 1}を削除`}
+                >
+                  <Trash2 aria-hidden className="size-4" />
+                </button>
+              </div>
+              <div className="grid gap-3">
+                <Field
+                  label="公開用URL / Storage path"
+                  value={asset.storagePath}
+                  onChange={(value) => onUpdate(asset.id, { storagePath: value })}
+                />
+                <Field
+                  label="参考YouTube URL"
+                  value={asset.referenceUrl ?? ""}
+                  onChange={(value) => onUpdate(asset.id, { referenceUrl: value })}
+                />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <OptionalSecondField
+                    label="開始秒"
+                    value={asset.referenceStartSec}
+                    onChange={(value) => onUpdate(asset.id, { referenceStartSec: value })}
+                  />
+                  <OptionalSecondField
+                    label="終了秒"
+                    value={asset.referenceEndSec}
+                    onChange={(value) => onUpdate(asset.id, { referenceEndSec: value })}
+                  />
+                </div>
+                <Field
+                  label="権利・許諾メモ"
+                  value={asset.rightsNote ?? ""}
+                  onChange={(value) => onUpdate(asset.id, { rightsNote: value })}
+                />
+                <label className="flex items-center gap-2 text-sm font-semibold text-graphite">
+                  <input
+                    type="checkbox"
+                    checked={asset.consentChecked}
+                    onChange={(event) => onUpdate(asset.id, { consentChecked: event.target.checked })}
+                    className="size-4 accent-pine"
+                  />
+                  公開利用できる動画であることを確認済み
+                </label>
+              </div>
+            </section>
+          ))}
+        </div>
+      ) : (
+        <p className="rounded bg-paper px-3 py-2 text-sm font-semibold text-graphite/68">動画候補はまだありません。</p>
+      )}
+      <button
+        type="button"
+        onClick={onAdd}
+        className="inline-flex h-10 items-center justify-center gap-2 rounded border border-pine px-3 text-sm font-black text-pine transition hover:bg-pine hover:text-white"
+      >
+        <Plus aria-hidden className="size-4" />
+        動画候補を追加
+      </button>
+    </div>
+  );
+}
+
+function OptionalSecondField({ label, value, onChange }: { label: string; value?: number; onChange: (value: number | undefined) => void }) {
+  return (
+    <label>
+      <span className="mb-2 block text-sm font-bold text-ink">{label}</span>
+      <input
+        min={0}
+        type="number"
+        value={value ?? ""}
+        onChange={(event) => onChange(event.target.value === "" ? undefined : Math.max(0, Math.round(Number(event.target.value))))}
+        className="h-11 w-full rounded border border-ink/14 bg-white px-3 text-sm outline-none focus:border-pine"
+      />
+    </label>
   );
 }
 

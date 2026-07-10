@@ -60,6 +60,10 @@ type MediaRow = {
   trick_id: string;
   type: MediaAsset["type"];
   storage_path: string;
+  reference_url: string | null;
+  reference_start_sec: number | null;
+  reference_end_sec: number | null;
+  rights_note: string | null;
   duration: number | null;
   credit: string | null;
   consent_checked: boolean;
@@ -107,7 +111,7 @@ export async function getPublicAtlasContent(): Promise<AtlasContent> {
     supabase.from("tricks").select("*").eq("status", "published").order("level", { ascending: true }).order("name", { ascending: true }),
     supabase.from("level_tests").select("level, category, title, pass_condition, trick_ids, source_id").order("level", { ascending: true }),
     supabase.from("trick_relations").select("id, from_trick_id, to_trick_id, type, note, strength, waypoints"),
-    supabase.from("media_assets").select("id, trick_id, type, storage_path, duration, credit, consent_checked"),
+    supabase.from("media_assets").select("id, trick_id, type, storage_path, reference_url, reference_start_sec, reference_end_sec, rights_note, duration, credit, consent_checked"),
     supabase.from("trick_map_positions").select("trick_id, x, y")
   ]);
 
@@ -138,7 +142,7 @@ export async function getAdminAtlasContent(): Promise<AtlasContent> {
     supabase.from("tricks").select("*").order("level", { ascending: true }).order("name", { ascending: true }),
     supabase.from("level_tests").select("level, category, title, pass_condition, trick_ids, source_id").order("level", { ascending: true }),
     supabase.from("trick_relations").select("id, from_trick_id, to_trick_id, type, note, strength, waypoints"),
-    supabase.from("media_assets").select("id, trick_id, type, storage_path, duration, credit, consent_checked"),
+    supabase.from("media_assets").select("id, trick_id, type, storage_path, reference_url, reference_start_sec, reference_end_sec, rights_note, duration, credit, consent_checked"),
     supabase.from("trick_map_positions").select("trick_id, x, y")
   ]);
 
@@ -265,6 +269,10 @@ function mapMedia(row: MediaRow): MediaAsset {
     trickId: row.trick_id,
     type: row.type,
     storagePath: row.storage_path,
+    referenceUrl: row.reference_url ?? undefined,
+    referenceStartSec: row.reference_start_sec ?? undefined,
+    referenceEndSec: row.reference_end_sec ?? undefined,
+    rightsNote: row.rights_note ?? undefined,
     duration: row.duration ?? undefined,
     credit: row.credit ?? undefined,
     consentChecked: row.consent_checked

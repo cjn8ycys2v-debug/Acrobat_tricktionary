@@ -4,7 +4,7 @@ import { ArrowLeft, GitBranch, PlayCircle, ShieldAlert } from "lucide-react";
 import { MetricDots } from "@/components/MetricDots";
 import { allTricks } from "@/lib/atlas";
 import { getPublicAtlasContent } from "@/lib/repository";
-import type { Trick, TrickRelation } from "@/lib/types";
+import type { MediaAsset, Trick, TrickRelation } from "@/lib/types";
 import { relationLabel } from "@/lib/utils";
 
 export function generateStaticParams() {
@@ -20,7 +20,7 @@ export default async function TrickDetailPage({ params }: { params: Promise<{ sl
   const incoming = atlas.relations.filter((relation) => relation.toTrickId === trick.id);
   const outgoing = atlas.relations.filter((relation) => relation.fromTrickId === trick.id);
   const mediaAssets = atlas.mediaAssets.filter((asset) => asset.trickId === trick.id && asset.type === "video");
-  const primaryVideo = mediaAssets[0];
+  const primaryVideo = mediaAssets.find((asset) => asset.storagePath.trim());
   const source = trick.showSource ? atlas.sources.find((item) => item.id === trick.sourceId) : undefined;
 
   return (
@@ -76,17 +76,13 @@ export default async function TrickDetailPage({ params }: { params: Promise<{ sl
         <aside className="grid gap-4 sm:gap-5">
           <section className="rounded border border-ink/10 bg-ink p-4 text-white shadow-sm sm:p-5">
             {primaryVideo ? (
-              <video
-                controls
-                className="aspect-video w-full rounded border border-white/14 bg-black"
-                src={videoSrc(primaryVideo.storagePath)}
-              />
+              <VideoFrame asset={primaryVideo} />
             ) : (
               <div className="grid aspect-video place-items-center rounded border border-white/14 bg-white/8">
                 <div className="text-center">
                   <PlayCircle aria-hidden className="mx-auto mb-3 size-12 text-saffron" />
                   <p className="text-sm font-bold">動画は管理画面から追加</p>
-                  <p className="mt-2 text-xs leading-5 text-white/62">Supabase Storageのtrick-mediaバケットに保存します。</p>
+                  <p className="mt-2 text-xs leading-5 text-white/62">公開用URLまたはStorage動画を登録すると表示されます。</p>
                 </div>
               </div>
             )}
@@ -110,11 +106,64 @@ export default async function TrickDetailPage({ params }: { params: Promise<{ sl
   );
 }
 
+function VideoFrame({ asset }: { asset: MediaAsset }) {
+  const youtubeSrc = youtubeEmbedSrc(asset.storagePath);
+  if (youtubeSrc) {
+    return (
+      <iframe
+        className="aspect-video w-full rounded border border-white/14 bg-black"
+        src={youtubeSrc}
+        title="お手本動画"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowFullScreen
+      />
+    );
+  }
+
+  return (
+    <video
+      controls
+      className="aspect-video w-full rounded border border-white/14 bg-black"
+      src={videoSrc(asset.storagePath)}
+    />
+  );
+}
+
 function videoSrc(storagePath: string) {
   if (/^https?:\/\//.test(storagePath)) return storagePath;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   if (!supabaseUrl) return storagePath;
   return `${supabaseUrl}/storage/v1/object/public/trick-media/${storagePath}`;
+}
+
+function youtubeEmbedSrc(url: string) {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./, "");
+    const id = host === "youtu.be" ? parsed.pathname.slice(1).split("/")[0] : parsed.searchParams.get("v") ?? parseEmbedPath(parsed.pathname);
+    if (!id || (host !== "youtu.be" && !host.endsWith("youtube.com") && !host.endsWith("youtube-nocookie.com"))) return "";
+    const seconds = parseTimeToSeconds(parsed.searchParams.get("t") ?? parsed.searchParams.get("start"));
+    const params = new URLSearchParams({ rel: "0", modestbranding: "1" });
+    if (seconds) params.set("start", String(seconds));
+    return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?${params.toString()}`;
+  } catch {
+    return "";
+  }
+}
+
+function parseEmbedPath(pathname: string) {
+  const parts = pathname.split("/").filter(Boolean);
+  const embedIndex = parts.findIndex((part) => part === "embed" || part === "shorts");
+  return embedIndex >= 0 ? parts[embedIndex + 1] : "";
+}
+
+function parseTimeToSeconds(value: string | null) {
+  if (!value) return 0;
+  if (/^\d+$/.test(value)) return Number(value);
+  const hours = /(\d+)h/.exec(value)?.[1];
+  const minutes = /(\d+)m/.exec(value)?.[1];
+  const seconds = /(\d+)s/.exec(value)?.[1];
+  return Number(hours ?? 0) * 3600 + Number(minutes ?? 0) * 60 + Number(seconds ?? 0);
 }
 
 function Info({ label, value }: { label: string; value: string }) {

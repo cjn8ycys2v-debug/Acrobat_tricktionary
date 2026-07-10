@@ -68,6 +68,10 @@ export type MediaAsset = {
   trickId: string;
   type: MediaType;
   storagePath: string;
+  referenceUrl?: string;
+  referenceStartSec?: number;
+  referenceEndSec?: number;
+  rightsNote?: string;
   duration?: number;
   credit?: string;
   consentChecked: boolean;

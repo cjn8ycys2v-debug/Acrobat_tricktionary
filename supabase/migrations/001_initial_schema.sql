@@ -84,10 +84,19 @@ create table public.media_assets (
   trick_id uuid not null references public.tricks(id) on delete cascade,
   type public.media_type not null default 'video',
   storage_path text not null,
+  reference_url text,
+  reference_start_sec int check (reference_start_sec is null or reference_start_sec >= 0),
+  reference_end_sec int check (reference_end_sec is null or reference_end_sec >= 0),
+  rights_note text,
   duration int,
   credit text,
   consent_checked boolean not null default false,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  constraint media_reference_range check (
+    reference_start_sec is null
+    or reference_end_sec is null
+    or reference_end_sec >= reference_start_sec
+  )
 );
 
 create or replace function public.is_admin()

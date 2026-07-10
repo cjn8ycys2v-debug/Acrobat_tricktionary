@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { getAdminAccessState } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import type { MediaAsset } from "@/lib/types";
 
 const maxBytes = 300 * 1024 * 1024;
+type MediaInput = Pick<MediaAsset, "storagePath" | "referenceUrl" | "referenceStartSec" | "referenceEndSec" | "rightsNote" | "duration" | "credit" | "consentChecked">;
 
 export async function POST(request: Request) {
   const access = await getAdminAccessState();
@@ -77,10 +79,10 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: "slug is required" }, { status: 400 });
   }
 
-  const mediaPaths = normalizeMediaPaths(body.mediaPaths);
+  const mediaAssets = Array.isArray(body.mediaAssets) ? normalizeMediaAssets(body.mediaAssets) : normalizeMediaPaths(body.mediaPaths).map(mediaAssetFromPath);
 
   if (access.mode === "prototype") {
-    return NextResponse.json({ mode: "prototype", saved: false, message: "Supabase未設定のため動画パス保存はスキップしました。" }, { status: 202 });
+    return NextResponse.json({ mode: "prototype", saved: false, media: mediaAssets.length, message: "Supabase未設定のため動画パス保存はスキップしました。" }, { status: 202 });
   }
 
   const supabase = await createSupabaseServerClient();
@@ -96,22 +98,72 @@ export async function PUT(request: Request) {
   const remove = await supabase.from("media_assets").delete().eq("trick_id", trick.id);
   if (remove.error) return NextResponse.json({ error: remove.error.message }, { status: 500 });
 
-  if (mediaPaths.length) {
+  if (mediaAssets.length) {
     const { error } = await supabase.from("media_assets").insert(
-      mediaPaths.map((storagePath) => ({
+      mediaAssets.map((asset) => ({
         trick_id: trick.id,
         type: "video",
-        storage_path: storagePath,
-        consent_checked: true
+        storage_path: asset.storagePath,
+        reference_url: asset.referenceUrl || null,
+        reference_start_sec: asset.referenceStartSec ?? null,
+        reference_end_sec: asset.referenceEndSec ?? null,
+        rights_note: asset.rightsNote || null,
+        duration: asset.duration ?? null,
+        credit: asset.credit || null,
+        consent_checked: asset.consentChecked
       }))
     );
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ saved: true, media: mediaPaths.length });
+  return NextResponse.json({ saved: true, media: mediaAssets.length });
 }
 
 function normalizeMediaPaths(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return Array.from(new Set(value.filter((item): item is string => typeof item === "string" && Boolean(item.trim())).map((item) => item.trim())));
+}
+
+function mediaAssetFromPath(storagePath: string): MediaInput {
+  return {
+    storagePath,
+    consentChecked: true
+  };
+}
+
+function normalizeMediaAssets(value: unknown[]): MediaInput[] {
+  return value
+    .map((item): MediaInput | null => {
+      if (!item || typeof item !== "object") return null;
+      const input = item as Record<string, unknown>;
+      const storagePath = typeof input.storagePath === "string" ? input.storagePath.trim() : "";
+      const referenceUrl = typeof input.referenceUrl === "string" ? input.referenceUrl.trim() : "";
+      if (!storagePath && !referenceUrl) return null;
+      const referenceStartSec = normalizeOptionalSecond(input.referenceStartSec);
+      const referenceEndSec = normalizeOptionalSecond(input.referenceEndSec);
+      return {
+        storagePath,
+        referenceUrl: referenceUrl || undefined,
+        referenceStartSec,
+        referenceEndSec,
+        rightsNote: typeof input.rightsNote === "string" ? input.rightsNote.trim() : undefined,
+        duration: normalizeOptionalSecond(input.duration),
+        credit: typeof input.credit === "string" ? input.credit.trim() : undefined,
+        consentChecked: Boolean(input.consentChecked)
+      };
+    })
+    .filter((asset): asset is MediaInput => Boolean(asset))
+    .map((asset) => {
+      if (asset.referenceStartSec !== undefined && asset.referenceEndSec !== undefined && asset.referenceEndSec < asset.referenceStartSec) {
+        return { ...asset, referenceEndSec: asset.referenceStartSec };
+      }
+      return asset;
+    });
+}
+
+function normalizeOptionalSecond(value: unknown) {
+  if (value === "" || value === null || value === undefined) return undefined;
+  const numberValue = Number(value);
+  if (!Number.isFinite(numberValue)) return undefined;
+  return Math.max(0, Math.round(numberValue));
 }
