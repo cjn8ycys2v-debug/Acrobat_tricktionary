@@ -19,7 +19,7 @@ type Props = {
   prototypeMode: boolean;
 };
 
-type AdminSection = "tricks" | "relations" | "layout" | "status";
+type AdminSection = "tricks" | "videos" | "relations" | "layout" | "status";
 
 export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAssets, sources, prototypeMode }: Props) {
   const [drafts, setDrafts] = useState(tricks);
@@ -201,20 +201,43 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         slug: selected.slug,
-        mediaAssets: selectedVideos.map((asset) => ({
-          storagePath: asset.storagePath,
-          referenceUrl: asset.referenceUrl,
-          referenceStartSec: asset.referenceStartSec,
-          referenceEndSec: asset.referenceEndSec,
-          rightsNote: asset.rightsNote,
-          duration: asset.duration,
-          credit: asset.credit,
-          consentChecked: asset.consentChecked
-        }))
+        mediaAssets: selectedVideos.map(mediaPayload)
       })
     });
     const mediaResult = await mediaResponse.json();
     setSaveMessage(mediaResponse.ok ? "技データ、相関、挿入動画を保存しました。" : `動画パスの保存に失敗しました: ${mediaResult.error ?? "unknown error"}`);
+  }
+
+  async function saveAllVideos() {
+    const affectedTrickIds = Array.from(new Set([...mediaAssets.map((asset) => asset.trickId), ...mediaDrafts.map((asset) => asset.trickId)]));
+
+    if (prototypeMode) {
+      setVideoMessage(`プロトタイプでは画面上の動画台帳だけを更新しました。Supabase接続後は${affectedTrickIds.length}技分をDBへ保存します。`);
+      return;
+    }
+
+    let saved = 0;
+    for (const trickId of affectedTrickIds) {
+      const trick = trickById.get(trickId);
+      if (!trick) continue;
+      const trickVideos = mediaDrafts.filter((asset) => asset.trickId === trick.id && asset.type === "video");
+      const response = await fetch("/api/admin/media", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          slug: trick.slug,
+          mediaAssets: trickVideos.map(mediaPayload)
+        })
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setVideoMessage(`${trick.name} の動画保存に失敗しました: ${result.error ?? "unknown error"}`);
+        return;
+      }
+      saved += 1;
+    }
+
+    setVideoMessage(`動画台帳をDBへ保存しました: ${saved}技 / ${mediaDrafts.length}件`);
   }
 
   function updateRelationIds(kind: "base" | "advanced", targetIds: string[]) {
@@ -543,6 +566,17 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
             </section>
           ) : null}
 
+          {activeSection === "videos" ? (
+            <VideoBulkEditor
+              tricks={drafts}
+              mediaAssets={mediaDrafts}
+              onMediaChange={setMediaDrafts}
+              onSave={saveAllVideos}
+              onMessage={setVideoMessage}
+              message={videoMessage}
+            />
+          ) : null}
+
           {activeSection === "relations" ? (
             <RelationBulkEditor tricks={drafts} relations={relationDrafts} onRelationsChange={setRelationDrafts} prototypeMode={prototypeMode} />
           ) : null}
@@ -585,13 +619,14 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
 function AdminSectionTabs({ activeSection, onChange }: { activeSection: AdminSection; onChange: (section: AdminSection) => void }) {
   const sections: Array<{ id: AdminSection; label: string; description: string }> = [
     { id: "tricks", label: "技を編集", description: "名前・説明・動画" },
+    { id: "videos", label: "動画台帳", description: "参考URL・公開URL" },
     { id: "relations", label: "繋がり", description: "相関の一覧・一括指定" },
     { id: "layout", label: "配置", description: "公式スキルツリー" },
     { id: "status", label: "確認", description: "相関・動画・出典" }
   ];
 
   return (
-    <div className="mb-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="mb-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
       {sections.map((section) => {
         const isActive = activeSection === section.id;
         return (
@@ -887,6 +922,219 @@ function RelationPreview({ relations, tricks, selectedId }: { relations: TrickRe
   );
 }
 
+function VideoBulkEditor({
+  tricks,
+  mediaAssets,
+  onMediaChange,
+  onSave,
+  onMessage,
+  message
+}: {
+  tricks: Trick[];
+  mediaAssets: MediaAsset[];
+  onMediaChange: (mediaAssets: MediaAsset[]) => void;
+  onSave: () => void;
+  onMessage: (message: string) => void;
+  message: string;
+}) {
+  const trickById = useMemo(() => new Map(tricks.map((trick) => [trick.id, trick])), [tricks]);
+  const [query, setQuery] = useState("");
+  const [stateFilter, setStateFilter] = useState("all");
+  const [videoText, setVideoText] = useState(() => exportVideoRows(mediaAssets, new Map(tricks.map((trick) => [trick.id, trick]))));
+
+  const videoAssets = useMemo(() => mediaAssets.filter((asset) => asset.type === "video"), [mediaAssets]);
+  const videoStats = useMemo(
+    () => ({
+      ready: videoAssets.filter((asset) => videoWorkflowState(asset).kind === "ready").length,
+      needsPublishUrl: videoAssets.filter((asset) => videoWorkflowState(asset).kind === "needsPublishUrl").length,
+      needsConsent: videoAssets.filter((asset) => videoWorkflowState(asset).kind === "needsConsent").length,
+      empty: videoAssets.filter((asset) => videoWorkflowState(asset).kind === "empty").length
+    }),
+    [videoAssets]
+  );
+
+  const visibleVideos = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    return videoAssets
+      .filter((asset) => {
+        const trick = trickById.get(asset.trickId);
+        const state = videoWorkflowState(asset).kind;
+        const haystack = [
+          trick?.name,
+          trick?.slug,
+          trick?.discipline,
+          trick?.family,
+          asset.storagePath,
+          asset.referenceUrl,
+          asset.credit,
+          asset.rightsNote,
+          state
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return (!normalized || haystack.includes(normalized)) && (stateFilter === "all" || state === stateFilter);
+      })
+      .sort((a, b) => {
+        const trickA = trickById.get(a.trickId);
+        const trickB = trickById.get(b.trickId);
+        return (trickA?.level ?? 999) - (trickB?.level ?? 999) || (trickA?.name ?? "").localeCompare(trickB?.name ?? "", "ja");
+      });
+  }, [query, stateFilter, trickById, videoAssets]);
+
+  function syncTextFromCurrent() {
+    setVideoText(exportVideoRows(mediaAssets, trickById));
+    onMessage("現在の動画台帳をテキスト欄へ反映しました。");
+  }
+
+  function applyVideoText() {
+    const result = parseVideoRows(videoText, tricks, mediaAssets);
+    if (result.errors.length) {
+      onMessage(`反映できない行があります: ${result.errors.slice(0, 4).join(" / ")}`);
+      return;
+    }
+
+    onMediaChange(result.mediaAssets);
+    onMessage(`${result.videoCount}件の動画候補を画面上に反映しました。保存するとDBへ反映します。`);
+  }
+
+  function removeVideo(id: string) {
+    onMediaChange(mediaAssets.filter((asset) => asset.id !== id));
+    onMessage("動画候補を削除しました。保存するとDBへ反映します。");
+  }
+
+  return (
+    <section className="rounded border border-ink/10 bg-white p-4 shadow-sm sm:p-5">
+      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <h2 className="flex items-center gap-2 text-sm font-black text-ink">
+            <FileVideo aria-hidden className="size-4 text-pine" />
+            動画台帳
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-graphite/76">
+            書式: 技名 | 参考URL | 開始秒 | 終了秒 | 公開用URL | 公開OK | クレジット | 権利メモ
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+          <VideoStat label="差し替え待ち" value={videoStats.needsPublishUrl} />
+          <VideoStat label="確認待ち" value={videoStats.needsConsent} />
+          <VideoStat label="埋め込みOK" value={videoStats.ready} />
+          <VideoStat label="未指定" value={videoStats.empty} />
+        </div>
+      </div>
+
+      <p className="mb-3 rounded bg-paper px-3 py-2 text-xs font-semibold text-graphite/72">{message}</p>
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(360px,.9fr)]">
+        <div className="grid gap-3">
+          <div className="grid gap-2 sm:grid-cols-[1fr_160px]">
+            <label className="flex h-10 min-w-0 items-center gap-2 rounded border border-ink/12 bg-paper px-3 text-sm focus-within:border-pine">
+              <Search aria-hidden className="size-4 shrink-0 text-graphite/42" />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="技名・URL・メモで検索"
+                className="h-full min-w-0 flex-1 bg-transparent outline-none"
+              />
+            </label>
+            <select
+              value={stateFilter}
+              onChange={(event) => setStateFilter(event.target.value)}
+              className="h-10 rounded border border-ink/14 bg-paper px-3 text-sm font-bold outline-none focus:border-pine"
+            >
+              <option value="all">全状態</option>
+              <option value="needsPublishUrl">差し替え待ち</option>
+              <option value="needsConsent">確認待ち</option>
+              <option value="ready">埋め込みOK</option>
+              <option value="empty">未指定</option>
+            </select>
+          </div>
+
+          <div className="max-h-[560px] overflow-auto rounded border border-ink/10 bg-paper p-2">
+            {visibleVideos.length ? (
+              visibleVideos.map((asset) => {
+                const trick = trickById.get(asset.trickId);
+                const state = videoWorkflowState(asset);
+                const range = formatReferenceRange(asset);
+                const reference = timedReferenceUrl(asset);
+                return (
+                  <section key={asset.id} className="mb-2 rounded border border-ink/8 bg-white p-3 last:mb-0">
+                    <div className="mb-2 flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-black text-ink">{trick?.name ?? asset.trickId}</p>
+                        <p className="mt-0.5 text-xs font-semibold text-graphite/62">
+                          Lv.{trick?.level || "-"} / {trick?.discipline ?? "-"} / {trick?.family ?? "-"}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeVideo(asset.id)}
+                        className="grid size-8 shrink-0 place-items-center rounded border border-ink/10 bg-paper text-graphite transition hover:border-coral hover:text-coral"
+                        aria-label={`${trick?.name ?? "動画"}を削除`}
+                      >
+                        <Trash2 aria-hidden className="size-4" />
+                      </button>
+                    </div>
+                    <span className={`inline-flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] font-black ${state.className}`}>
+                      {state.kind === "ready" ? <CheckCircle2 aria-hidden className="size-3.5" /> : <Clock aria-hidden className="size-3.5" />}
+                      {state.label}
+                    </span>
+                    <div className="mt-2 grid gap-1.5 text-xs leading-5 text-graphite/72">
+                      {asset.storagePath ? <p className="break-all font-bold text-ink">公開: {asset.storagePath}</p> : null}
+                      {reference ? (
+                        <a href={reference} target="_blank" rel="noreferrer" className="break-all font-bold text-pine underline-offset-4 hover:underline">
+                          参考: {reference}
+                          {range ? ` / ${range}` : ""}
+                        </a>
+                      ) : null}
+                      {asset.credit ? <p>クレジット: {asset.credit}</p> : null}
+                      {asset.rightsNote ? <p>メモ: {asset.rightsNote}</p> : null}
+                    </div>
+                  </section>
+                );
+              })
+            ) : (
+              <p className="p-3 text-sm text-graphite/70">条件に合う動画候補はありません。</p>
+            )}
+          </div>
+        </div>
+
+        <div className="grid gap-3">
+          <textarea
+            value={videoText}
+            onChange={(event) => setVideoText(event.target.value)}
+            className="min-h-[460px] w-full rounded border border-ink/14 bg-paper px-3 py-2 font-mono text-xs leading-5 outline-none focus:border-pine"
+          />
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <button
+              type="button"
+              onClick={syncTextFromCurrent}
+              className="inline-flex h-10 items-center justify-center rounded border border-ink/14 px-3 text-sm font-black text-graphite transition hover:border-pine hover:text-pine"
+            >
+              現在値を反映
+            </button>
+            <button
+              type="button"
+              onClick={applyVideoText}
+              className="inline-flex h-10 items-center justify-center rounded border border-pine px-3 text-sm font-black text-pine transition hover:bg-pine hover:text-white"
+            >
+              画面に反映
+            </button>
+            <button
+              type="button"
+              onClick={onSave}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded bg-pine px-4 text-sm font-black text-white transition hover:bg-ink"
+            >
+              <Save aria-hidden className="size-4" />
+              DB保存
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function VideoReferenceEditor({
   videos,
   onAdd,
@@ -1154,6 +1402,124 @@ function splitLines(value: string) {
     .split(/\n/)
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function mediaPayload(asset: MediaAsset) {
+  return {
+    storagePath: asset.storagePath,
+    referenceUrl: asset.referenceUrl,
+    referenceStartSec: asset.referenceStartSec,
+    referenceEndSec: asset.referenceEndSec,
+    rightsNote: asset.rightsNote,
+    duration: asset.duration,
+    credit: asset.credit,
+    consentChecked: asset.consentChecked
+  };
+}
+
+function exportVideoRows(mediaAssets: MediaAsset[], trickById: Map<string, Trick>) {
+  const rows = mediaAssets
+    .filter((asset) => asset.type === "video")
+    .sort((a, b) => {
+      const trickA = trickById.get(a.trickId);
+      const trickB = trickById.get(b.trickId);
+      return (trickA?.level ?? 999) - (trickB?.level ?? 999) || (trickA?.name ?? "").localeCompare(trickB?.name ?? "", "ja");
+    })
+    .map((asset) => {
+      const trick = trickById.get(asset.trickId);
+      return [
+        trick?.name ?? asset.trickId,
+        asset.referenceUrl ?? "",
+        asset.referenceStartSec ?? "",
+        asset.referenceEndSec ?? "",
+        asset.storagePath,
+        asset.consentChecked ? "OK" : "",
+        asset.credit ?? "",
+        asset.rightsNote ?? ""
+      ].join(" | ");
+    });
+
+  return ["# 技名 | 参考URL | 開始秒 | 終了秒 | 公開用URL | 公開OK | クレジット | 権利メモ", ...rows].join("\n");
+}
+
+function parseVideoRows(text: string, tricks: Trick[], currentMediaAssets: MediaAsset[]) {
+  const errors: string[] = [];
+  const trickByKey = new Map<string, Trick>();
+  for (const trick of tricks) {
+    trickByKey.set(trick.name, trick);
+    trickByKey.set(trick.slug, trick);
+  }
+
+  const existingByKey = new Map(
+    currentMediaAssets.map((asset) => [videoRowKey(asset.trickId, asset.storagePath, asset.referenceUrl ?? "", asset.referenceStartSec), asset])
+  );
+  const keptNonVideo = currentMediaAssets.filter((asset) => asset.type !== "video");
+  const parsedVideos: MediaAsset[] = [];
+
+  text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("#"))
+    .forEach((line, index) => {
+      const parts = line.split("|").map((part) => part.trim());
+      const trick = trickByKey.get(parts[0]);
+      if (!trick) {
+        errors.push(`${index + 1}行目: 技名が見つかりません`);
+        return;
+      }
+
+      const referenceUrl = parts[1] ?? "";
+      const referenceStartSec = parseOptionalSecond(parts[2]);
+      const referenceEndSec = normalizeReferenceEnd(referenceStartSec, parseOptionalSecond(parts[3]));
+      const storagePath = parts[4] ?? "";
+      if (!referenceUrl && !storagePath) {
+        errors.push(`${index + 1}行目: 参考URLか公開用URLが必要です`);
+        return;
+      }
+
+      const key = videoRowKey(trick.id, storagePath, referenceUrl, referenceStartSec);
+      const existing = existingByKey.get(key);
+      parsedVideos.push({
+        id: existing?.id ?? `draft-video-${trick.id}-${index}-${Date.now()}`,
+        trickId: trick.id,
+        type: "video",
+        storagePath,
+        referenceUrl: referenceUrl || undefined,
+        referenceStartSec,
+        referenceEndSec,
+        rightsNote: parts.slice(7).join(" | ") || undefined,
+        duration: existing?.duration,
+        credit: parts[6] || undefined,
+        consentChecked: parseConsent(parts[5])
+      });
+    });
+
+  return {
+    mediaAssets: [...keptNonVideo, ...parsedVideos],
+    videoCount: parsedVideos.length,
+    errors
+  };
+}
+
+function videoRowKey(trickId: string, storagePath: string, referenceUrl: string, referenceStartSec?: number) {
+  return [trickId, storagePath, referenceUrl, referenceStartSec ?? ""].join("\u0000");
+}
+
+function parseOptionalSecond(value: string | undefined) {
+  if (!value) return undefined;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return undefined;
+  return Math.max(0, Math.round(numeric));
+}
+
+function normalizeReferenceEnd(start: number | undefined, end: number | undefined) {
+  if (start !== undefined && end !== undefined && end < start) return start;
+  return end;
+}
+
+function parseConsent(value: string | undefined) {
+  const normalized = (value ?? "").trim().toLowerCase();
+  return ["ok", "true", "1", "yes", "y", "済", "確認済", "公開ok", "公開"].includes(normalized);
 }
 
 function isLearningRelation(relation: TrickRelation) {
