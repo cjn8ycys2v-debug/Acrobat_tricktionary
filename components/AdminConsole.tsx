@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { CheckCircle2, Clock, Database, ExternalLink, FileVideo, GitBranch, Layers, LinkIcon, Lock, Plus, Save, Search, Trash2, Upload, type LucideIcon } from "lucide-react";
 import { AdminMapEditor } from "@/components/AdminMapEditor";
 import { RelationBulkEditor } from "@/components/RelationBulkEditor";
+import { formatReferenceRange, isLikelyDirectVideoPath, timedReferenceUrl, videoSrc, youtubeEmbedSrc } from "@/lib/media";
 import type { LevelTest, MediaAsset, Source, Trick, TrickMapPosition, TrickRelation } from "@/lib/types";
 import type { ReactNode } from "react";
 import { relationLabel } from "@/lib/utils";
@@ -948,6 +949,7 @@ function VideoReferenceEditor({
                     placeholder="自分の限定公開YouTube URL または Storage path"
                     onChange={(value) => onUpdate(asset.id, { storagePath: value })}
                   />
+                  <VideoPreview asset={asset} />
                   <Field
                     label="参考YouTube URL"
                     value={asset.referenceUrl ?? ""}
@@ -1027,6 +1029,46 @@ function VideoStat({ label, value }: { label: string; value: number }) {
   );
 }
 
+function VideoPreview({ asset }: { asset: MediaAsset }) {
+  const source = asset.storagePath.trim();
+  if (!source) return null;
+
+  const youtubeSrc = youtubeEmbedSrc(source);
+  const canRenderVideo = isLikelyDirectVideoPath(source);
+  const label = asset.consentChecked ? "公開プレビュー" : "公開前プレビュー";
+
+  if (!youtubeSrc && !canRenderVideo) {
+    return (
+      <a
+        href={source}
+        target="_blank"
+        rel="noreferrer"
+        className="inline-flex min-h-9 items-center gap-2 rounded border border-ink/10 bg-white px-3 py-2 text-xs font-black text-pine transition hover:border-pine"
+      >
+        <ExternalLink aria-hidden className="size-4 shrink-0" />
+        公開URLを開く
+      </a>
+    );
+  }
+
+  return (
+    <div className="rounded border border-ink/10 bg-white p-2">
+      <p className="mb-2 text-[10px] font-black text-graphite/58">{label}</p>
+      {youtubeSrc ? (
+        <iframe
+          className="aspect-video w-full rounded border border-ink/10 bg-black"
+          src={youtubeSrc}
+          title={label}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+        />
+      ) : (
+        <video controls className="aspect-video w-full rounded border border-ink/10 bg-black" src={videoSrc(source)} />
+      )}
+    </div>
+  );
+}
+
 function videoWorkflowState(asset: MediaAsset) {
   if (asset.storagePath.trim() && asset.consentChecked) {
     return {
@@ -1054,29 +1096,6 @@ function videoWorkflowState(asset: MediaAsset) {
     label: "未指定",
     className: "border-ink/10 bg-white text-graphite/70"
   };
-}
-
-function timedReferenceUrl(asset: MediaAsset) {
-  if (!asset.referenceUrl) return "";
-  try {
-    const url = new URL(asset.referenceUrl);
-    if (asset.referenceStartSec !== undefined) {
-      if (url.hostname.replace(/^www\./, "") === "youtu.be") {
-        url.searchParams.set("t", `${asset.referenceStartSec}s`);
-      } else {
-        url.searchParams.set("start", String(asset.referenceStartSec));
-      }
-    }
-    return url.toString();
-  } catch {
-    return "";
-  }
-}
-
-function formatReferenceRange(asset: MediaAsset) {
-  if (asset.referenceStartSec === undefined && asset.referenceEndSec === undefined) return "";
-  const start = asset.referenceStartSec ?? 0;
-  return asset.referenceEndSec === undefined ? `${start}s〜` : `${start}s〜${asset.referenceEndSec}s`;
 }
 
 function OptionalSecondField({ label, value, onChange }: { label: string; value?: number; onChange: (value: number | undefined) => void }) {

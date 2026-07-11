@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, BookOpenText, ClipboardList, GitBranch, Lightbulb, PlayCircle, ShieldAlert, TriangleAlert, type LucideIcon } from "lucide-react";
+import { ArrowLeft, BookOpenText, ClipboardList, ExternalLink, GitBranch, Lightbulb, PlayCircle, ShieldAlert, TriangleAlert, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { MetricDots } from "@/components/MetricDots";
 import { allTricks } from "@/lib/atlas";
+import { formatSeconds, isLikelyDirectVideoPath, videoSrc, youtubeEmbedSrc } from "@/lib/media";
 import { getPublicAtlasContent } from "@/lib/repository";
 import type { MediaAsset, Trick, TrickRelation } from "@/lib/types";
 import { relationLabel } from "@/lib/utils";
@@ -102,7 +103,7 @@ export default async function TrickDetailPage({ params }: { params: Promise<{ sl
         <aside className="grid gap-4 sm:gap-5">
           <section className="rounded border border-ink/10 bg-ink p-4 text-white shadow-sm sm:p-5">
             {primaryVideo ? (
-              <VideoFrame asset={primaryVideo} />
+              <VideoPanel asset={primaryVideo} />
             ) : (
               <div className="grid aspect-video place-items-center rounded border border-white/14 bg-white/8">
                 <div className="text-center">
@@ -229,6 +230,28 @@ function KnowledgeSources({ urls }: { urls: string[] }) {
   );
 }
 
+function VideoPanel({ asset }: { asset: MediaAsset }) {
+  const meta = [
+    asset.credit ? `撮影/提供: ${asset.credit}` : "",
+    asset.duration !== undefined ? `動画: ${formatSeconds(asset.duration)}` : ""
+  ].filter(Boolean);
+
+  return (
+    <div>
+      <VideoFrame asset={asset} />
+      {meta.length ? (
+        <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-white/72">
+          {meta.map((item) => (
+            <span key={item} className="rounded border border-white/14 bg-white/8 px-2 py-1">
+              {item}
+            </span>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function VideoFrame({ asset }: { asset: MediaAsset }) {
   const youtubeSrc = youtubeEmbedSrc(asset.storagePath);
   if (youtubeSrc) {
@@ -243,6 +266,22 @@ function VideoFrame({ asset }: { asset: MediaAsset }) {
     );
   }
 
+  if (!isLikelyDirectVideoPath(asset.storagePath)) {
+    return (
+      <a
+        href={asset.storagePath}
+        target="_blank"
+        rel="noreferrer"
+        className="grid aspect-video place-items-center rounded border border-white/14 bg-white/8 text-center transition hover:border-saffron"
+      >
+        <span>
+          <ExternalLink aria-hidden className="mx-auto mb-3 size-10 text-saffron" />
+          <span className="text-sm font-black">動画を開く</span>
+        </span>
+      </a>
+    );
+  }
+
   return (
     <video
       controls
@@ -250,43 +289,6 @@ function VideoFrame({ asset }: { asset: MediaAsset }) {
       src={videoSrc(asset.storagePath)}
     />
   );
-}
-
-function videoSrc(storagePath: string) {
-  if (/^https?:\/\//.test(storagePath)) return storagePath;
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!supabaseUrl) return storagePath;
-  return `${supabaseUrl}/storage/v1/object/public/trick-media/${storagePath}`;
-}
-
-function youtubeEmbedSrc(url: string) {
-  try {
-    const parsed = new URL(url);
-    const host = parsed.hostname.replace(/^www\./, "");
-    const id = host === "youtu.be" ? parsed.pathname.slice(1).split("/")[0] : parsed.searchParams.get("v") ?? parseEmbedPath(parsed.pathname);
-    if (!id || (host !== "youtu.be" && !host.endsWith("youtube.com") && !host.endsWith("youtube-nocookie.com"))) return "";
-    const seconds = parseTimeToSeconds(parsed.searchParams.get("t") ?? parsed.searchParams.get("start"));
-    const params = new URLSearchParams({ rel: "0", modestbranding: "1" });
-    if (seconds) params.set("start", String(seconds));
-    return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?${params.toString()}`;
-  } catch {
-    return "";
-  }
-}
-
-function parseEmbedPath(pathname: string) {
-  const parts = pathname.split("/").filter(Boolean);
-  const embedIndex = parts.findIndex((part) => part === "embed" || part === "shorts");
-  return embedIndex >= 0 ? parts[embedIndex + 1] : "";
-}
-
-function parseTimeToSeconds(value: string | null) {
-  if (!value) return 0;
-  if (/^\d+$/.test(value)) return Number(value);
-  const hours = /(\d+)h/.exec(value)?.[1];
-  const minutes = /(\d+)m/.exec(value)?.[1];
-  const seconds = /(\d+)s/.exec(value)?.[1];
-  return Number(hours ?? 0) * 3600 + Number(minutes ?? 0) * 60 + Number(seconds ?? 0);
 }
 
 function Info({ label, value }: { label: string; value: string }) {
