@@ -15,7 +15,7 @@ import {
   type Connection
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { GitBranch, MousePointer2, Plus, RotateCcw, Save, Trash2 } from "lucide-react";
+import { GitBranch, ListTree, MousePointer2, Plus, RotateCcw, Save, Search, Trash2 } from "lucide-react";
 import { RouteEdge, type RouteEdgeData } from "@/components/RouteEdge";
 import { makeDirectSkillTreeRelations, makeLevelColumnLayoutMap } from "@/lib/map-layout";
 import { sortFamilies } from "@/lib/taxonomy";
@@ -53,6 +53,7 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
   const [layoutText, setLayoutText] = useState("");
   const [newRelationType, setNewRelationType] = useState<RelationType>("progression");
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+  const [relationQuery, setRelationQuery] = useState("");
 
   const trickById = useMemo(() => new Map(tricks.map((trick) => [trick.id, trick])), [tricks]);
   const visibleTricks = useMemo(() => {
@@ -64,6 +65,10 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
     return tricks.filter((trick) => ids.has(trick.id));
   }, [relations, tricks]);
   const visibleRelations = useMemo(() => makeDirectSkillTreeRelations(relations, visibleTricks), [relations, visibleTricks]);
+  const editableRelations = useMemo(
+    () => visibleRelations.filter((relation) => trickById.has(relation.fromTrickId) && trickById.has(relation.toTrickId)),
+    [trickById, visibleRelations]
+  );
 
   const familyByName = useMemo(() => {
     const families = sortFamilies(Array.from(new Set(visibleTricks.map((trick) => trick.family))));
@@ -105,9 +110,7 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
 
   const edges: Edge[] = useMemo(
     () =>
-      visibleRelations
-        .filter((relation) => trickById.has(relation.fromTrickId) && trickById.has(relation.toTrickId))
-        .map((relation) => ({
+      editableRelations.map((relation) => ({
           id: relation.id,
           source: relation.fromTrickId,
           target: relation.toTrickId,
@@ -123,7 +126,7 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
             onWaypointDelete: deleteWaypoint
           } satisfies RouteEdgeData
         })),
-    [deleteWaypoint, selectedEdgeId, trickById, updateWaypoint, visibleRelations]
+    [deleteWaypoint, editableRelations, selectedEdgeId, updateWaypoint]
   );
 
   useEffect(() => {
@@ -303,6 +306,27 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
 
   const selectedFromName = selectedRelation ? (trickById.get(selectedRelation.fromTrickId)?.name ?? selectedRelation.fromTrickId) : "";
   const selectedToName = selectedRelation ? (trickById.get(selectedRelation.toTrickId)?.name ?? selectedRelation.toTrickId) : "";
+  const filteredEditableRelations = useMemo(() => {
+    const normalized = relationQuery.trim().toLowerCase();
+    if (!normalized) return editableRelations;
+    return editableRelations.filter((relation) => {
+      const from = trickById.get(relation.fromTrickId);
+      const to = trickById.get(relation.toTrickId);
+      const haystack = [
+        from?.name,
+        to?.name,
+        from?.family,
+        to?.family,
+        relationLabel(relation.type),
+        relation.note,
+        relation.waypoints.length ? `中継点${relation.waypoints.length}` : "中継点0"
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(normalized);
+    });
+  }, [editableRelations, relationQuery, trickById]);
 
   return (
     <section className="rounded border border-ink/10 bg-white p-4 shadow-sm sm:p-5">
@@ -461,6 +485,61 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
             ) : (
               <p className="mt-2 text-xs font-semibold leading-5 text-graphite/68">線をクリックすると、曲げるための中継点を追加・削除できます。</p>
             )}
+          </div>
+          <div className="rounded border border-ink/10 bg-paper p-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="flex items-center gap-1.5 text-xs font-black text-graphite/62">
+                <ListTree aria-hidden className="size-4 text-pine" />
+                表示中の線
+              </p>
+              <span className="rounded bg-white px-2 py-1 text-[11px] font-black text-graphite/68">{editableRelations.length}本</span>
+            </div>
+            <label className="mt-3 flex h-9 items-center gap-2 rounded border border-ink/12 bg-white px-2.5 text-xs focus-within:border-pine">
+              <Search aria-hidden className="size-4 shrink-0 text-graphite/42" />
+              <input
+                value={relationQuery}
+                onChange={(event) => setRelationQuery(event.target.value)}
+                placeholder="技名・系統・中継点で検索"
+                className="h-full min-w-0 flex-1 bg-transparent outline-none"
+              />
+            </label>
+            <div className="mt-3 max-h-72 overflow-auto pr-1">
+              {filteredEditableRelations.length ? (
+                <div className="grid gap-2">
+                  {filteredEditableRelations.map((relation) => {
+                    const from = trickById.get(relation.fromTrickId);
+                    const to = trickById.get(relation.toTrickId);
+                    const isSelected = relation.id === selectedEdgeId;
+                    return (
+                      <button
+                        key={relation.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedEdgeId(relation.id);
+                          setMessage("線一覧から選択しました。中継点を追加して、丸をドラッグすると通り道を調整できます。");
+                        }}
+                        className={`w-full rounded border px-3 py-2 text-left transition ${
+                          isSelected ? "border-pine bg-skywash text-pine" : "border-ink/8 bg-white text-graphite hover:border-pine"
+                        }`}
+                      >
+                        <span className="flex flex-wrap items-center gap-1.5">
+                          <span className="rounded bg-paper px-2 py-0.5 text-[11px] font-black">{relationLabel(relation.type)}</span>
+                          <span className="rounded bg-paper px-2 py-0.5 text-[11px] font-black">中継点 {relation.waypoints.length}</span>
+                        </span>
+                        <span className="mt-1.5 block text-xs font-black leading-5 text-ink">
+                          {from?.name ?? relation.fromTrickId} <span className="text-coral">→</span> {to?.name ?? relation.toTrickId}
+                        </span>
+                        <span className="mt-0.5 block truncate text-[11px] font-semibold opacity-70">
+                          {from?.family ?? "-"} / {to?.family ?? "-"}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="rounded bg-white px-3 py-2 text-xs font-semibold text-graphite/62">条件に合う線がありません。</p>
+              )}
+            </div>
           </div>
           <div className="rounded border border-ink/10 bg-paper p-3">
             <p className="text-xs font-black text-graphite/62">配置JSON</p>
