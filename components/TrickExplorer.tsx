@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Filter, Search, SlidersHorizontal, X } from "lucide-react";
+import { Activity, Compass, Filter, GitBranch, Search, ShieldAlert, SlidersHorizontal, Waypoints, X } from "lucide-react";
 import type { Trick } from "@/lib/types";
 import { TrickCard } from "@/components/TrickCard";
 import { disciplineDescriptions } from "@/lib/taxonomy";
@@ -23,11 +23,16 @@ type Props = {
 
 const allValue = "all";
 
+type PresetCriteria = Partial<Pick<Trick, "discipline" | "family" | "ropeContext">> & {
+  tag?: string;
+};
+
 export function TrickExplorer({ tricks, options }: Props) {
   const [query, setQuery] = useState("");
   const [discipline, setDiscipline] = useState(allValue);
   const [family, setFamily] = useState(allValue);
   const [axis, setAxis] = useState(allValue);
+  const [ropeContext, setRopeContext] = useState(allValue);
   const [difficulty, setDifficulty] = useState(allValue);
   const [risk, setRisk] = useState(allValue);
   const [tag, setTag] = useState(allValue);
@@ -52,6 +57,10 @@ export function TrickExplorer({ tricks, options }: Props) {
           trick.discipline,
           trick.family,
           trick.axis,
+          trick.takeoff,
+          trick.landing,
+          trick.ropeContext,
+          trick.levelCategory,
           ...trick.tags
         ]
           .join(" ")
@@ -62,6 +71,7 @@ export function TrickExplorer({ tricks, options }: Props) {
           (discipline === allValue || trick.discipline === discipline) &&
           (family === allValue || trick.family === family) &&
           (axis === allValue || trick.axis === axis) &&
+          (ropeContext === allValue || trick.ropeContext === ropeContext) &&
           (difficulty === allValue || String(trick.difficulty) === difficulty) &&
           (risk === allValue || String(trick.riskLevel) === risk) &&
           (tag === allValue || trick.tags.includes(tag))
@@ -73,7 +83,7 @@ export function TrickExplorer({ tricks, options }: Props) {
         if (sort === "name") return a.name.localeCompare(b.name, "ja");
         return a.level - b.level || a.name.localeCompare(b.name, "ja");
       });
-  }, [axis, difficulty, discipline, family, query, risk, sort, tag, tricks]);
+  }, [axis, difficulty, discipline, family, query, risk, ropeContext, sort, tag, tricks]);
 
   const disciplineStats = useMemo(
     () =>
@@ -85,16 +95,96 @@ export function TrickExplorer({ tricks, options }: Props) {
     [options.disciplines, tricks]
   );
 
-  const hasFilters = Boolean(query || discipline !== allValue || family !== allValue || axis !== allValue || difficulty !== allValue || risk !== allValue || tag !== allValue);
+  const explorationPresets = useMemo(
+    () => {
+      const presets: Array<{
+        label: string;
+        description: string;
+        icon: typeof Activity;
+        criteria: PresetCriteria;
+      }> = [
+        {
+          label: "縄内アップから",
+          description: "まず縄の中で体を慣らす低負荷の動き",
+          icon: Activity,
+          criteria: { ropeContext: "縄内アップ" }
+        },
+        {
+          label: "床・倒立を固める",
+          description: "手支持、受け身、体幹を作る前提技",
+          icon: ShieldAlert,
+          criteria: { family: "倒立・床基礎" }
+        },
+        {
+          label: "反発と接続",
+          description: "側転、ロンダート、バク転へつながる流れ",
+          icon: GitBranch,
+          criteria: { family: "側方・反発" }
+        },
+        {
+          label: "空中系へ進む",
+          description: "高さ、回転、着地を段階的に確認する技",
+          icon: Compass,
+          criteria: { family: "空中回転" }
+        },
+        {
+          label: "ひねりを探す",
+          description: "目線、肩、着地方向を作る発展技",
+          icon: Waypoints,
+          criteria: { family: "ひねり" }
+        }
+      ];
+
+      return presets.map((preset) => ({
+        ...preset,
+        count: tricks.filter((trick) => matchesPreset(trick, preset.criteria)).length
+      }));
+    },
+    [tricks]
+  );
+
+  const activePresetLabel = explorationPresets.find((preset) => {
+    const criteria = preset.criteria;
+    return (
+      (criteria.discipline ?? allValue) === discipline &&
+      (criteria.family ?? allValue) === family &&
+      (criteria.ropeContext ?? allValue) === ropeContext &&
+      (criteria.tag ?? allValue) === tag
+    );
+  })?.label;
+
+  const hasFilters = Boolean(
+    query ||
+      discipline !== allValue ||
+      family !== allValue ||
+      axis !== allValue ||
+      ropeContext !== allValue ||
+      difficulty !== allValue ||
+      risk !== allValue ||
+      tag !== allValue
+  );
 
   function resetFilters() {
     setQuery("");
     setDiscipline(allValue);
     setFamily(allValue);
     setAxis(allValue);
+    setRopeContext(allValue);
     setDifficulty(allValue);
     setRisk(allValue);
     setTag(allValue);
+    setSort("level");
+  }
+
+  function applyPreset(criteria: PresetCriteria) {
+    setQuery("");
+    setDiscipline(criteria.discipline ?? allValue);
+    setFamily(criteria.family ?? allValue);
+    setAxis(allValue);
+    setRopeContext(criteria.ropeContext ?? allValue);
+    setDifficulty(allValue);
+    setRisk(allValue);
+    setTag(criteria.tag ?? allValue);
     setSort("level");
   }
 
@@ -117,6 +207,7 @@ export function TrickExplorer({ tricks, options }: Props) {
           <Select label="大分類" value={discipline} onChange={setDiscipline} values={options.disciplines} />
           <Select label="系統" value={family} onChange={setFamily} values={options.families} />
           <Select label="軸" value={axis} onChange={setAxis} values={options.axes} />
+          <Select label="縄文脈" value={ropeContext} onChange={setRopeContext} values={options.ropeContexts} />
           <Select label="難度" value={difficulty} onChange={setDifficulty} values={["1", "2", "3", "4", "5"]} />
           <Select label="危険度" value={risk} onChange={setRisk} values={["1", "2", "3", "4", "5"]} />
         </div>
@@ -165,6 +256,39 @@ export function TrickExplorer({ tricks, options }: Props) {
               </button>
             ) : null}
           </div>
+        </div>
+      </div>
+
+      <div className="mt-5">
+        <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-sm font-black text-ink">目的から探す</p>
+            <p className="text-xs leading-5 text-graphite/64">練習の入り口、床作り、反発、空中、ひねりの順に入口を分けました。</p>
+          </div>
+          {activePresetLabel ? <p className="text-xs font-black text-pine">選択中: {activePresetLabel}</p> : null}
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+          {explorationPresets.map((preset) => {
+            const Icon = preset.icon;
+            const isActive = activePresetLabel === preset.label;
+            return (
+              <button
+                key={preset.label}
+                type="button"
+                onClick={() => applyPreset(preset.criteria)}
+                className={`min-h-[112px] rounded border p-3 text-left transition ${
+                  isActive ? "border-coral bg-coral/8 text-coral shadow-sm" : "border-ink/10 bg-white text-ink hover:border-coral/45 hover:bg-coral/5"
+                }`}
+              >
+                <span className="flex items-center justify-between gap-2">
+                  <Icon aria-hidden className="size-4 shrink-0" />
+                  <span className="rounded bg-paper px-2 py-0.5 text-[11px] font-black text-graphite">{preset.count} 技</span>
+                </span>
+                <span className="mt-2 block text-sm font-black leading-5">{preset.label}</span>
+                <span className="mt-1.5 block text-xs font-semibold leading-5 text-graphite/70">{preset.description}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -224,6 +348,15 @@ export function TrickExplorer({ tricks, options }: Props) {
         </div>
       ) : null}
     </section>
+  );
+}
+
+function matchesPreset(trick: Trick, criteria: PresetCriteria) {
+  return (
+    (!criteria.discipline || trick.discipline === criteria.discipline) &&
+    (!criteria.family || trick.family === criteria.family) &&
+    (!criteria.ropeContext || trick.ropeContext === criteria.ropeContext) &&
+    (!criteria.tag || trick.tags.includes(criteria.tag))
   );
 }
 
