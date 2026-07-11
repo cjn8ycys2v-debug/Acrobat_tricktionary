@@ -79,6 +79,27 @@ function axis(name) {
   return "移動・切り返し";
 }
 
+function takeoff(name) {
+  if (/(倒立|肘|チェアー|プッシュアップ|ウインド|トーマス|エリオ|スワイプ|コイン|ボム)/.test(name)) return "手支持・床支持";
+  if (/(片足|ウェブスター|ゲイナー|ライズ|540|コーク)/.test(name)) return "片足";
+  if (/(ロンダート|ロン|バク転|宙|フリップ|バッファ)/.test(name)) return "助走・反発";
+  return "その場";
+}
+
+function landing(name) {
+  if (/(倒立|肘|チェアー|1990|2000)/.test(name)) return "手支持";
+  if (/(ウインド|トーマス|エリオ|コイン|ボム|背倒立)/.test(name)) return "床・背中";
+  if (/(ロンバク|テンポ|連続)/.test(name)) return "連続へ接続";
+  return "足立ち";
+}
+
+function ropeContext(level, name) {
+  if (level <= 2) return "縄内アップ";
+  if (/(連続|ロンバク|テンポ|スワイプス|ウインド)/.test(name)) return "縄内連続";
+  if (level >= 8) return "パフォーマンス";
+  return "縄内単発";
+}
+
 function focus(name, fam, disc) {
   if (fam === "基礎ムーブ") return "縄のリズムを崩さず、踏み替えや床移動を安定させることが練習の軸になります。";
   if (fam === "倒立・床基礎") return "肩、体幹、受け身を整え、手支持や床支持の姿勢を崩さないことが重要です。";
@@ -99,12 +120,31 @@ function levelRole(level) {
   return "十分な前提技が必要な高難度";
 }
 
+function familyConcept(fam) {
+  if (fam === "基礎ムーブ") return "縄の中で崩れない足順、低い姿勢、床移動を作る系統です。派手さよりもリズムの継続と入退場の安定が価値になります。";
+  if (fam === "倒立・床基礎") return "手支持、受け身、肩の押し、体幹の締めを作る系統です。空中技に進む前に、床で体を支える感覚をそろえます。";
+  if (fam === "側方・反発") return "側転、ロンダート、バク転など、床を押して次の技へ反発を残す系統です。助走と着地後の進行方向が学習の鍵になります。";
+  if (fam === "空中回転") return "踏切で高さを作り、空中で姿勢をまとめ、着地でほどく系統です。縄内では回転そのものより入るタイミングと抜ける余白が重要です。";
+  if (fam === "ひねり") return "縦回転や横回転に肩、目線、骨盤の向きを加える発展系統です。高さを失わずにひねり始める順番を管理します。";
+  if (fam === "トリッキング") return "蹴り、片足踏切、斜め軌道を使って見せ方を作る系統です。技単体だけでなく、入り方と着地後の流れで印象が変わります。";
+  if (fam === "ブレイキン・床回転") return "床支持と重心移動を使って回転やフリーズ感を作る系統です。縄との距離、床に置く面、回転幅の管理が大切です。";
+  if (fam === "連続・創作") return "複数の技を順番、向き、音取りで組み合わせる系統です。個々の成功率だけでなく、つなぎのロスを減らすことが中心になります。";
+  return "この図鑑では、前提技から発展技へ進むための学習上の位置づけを重視しています。";
+}
+
+function disciplineBridge(disc) {
+  if (disc === "ダブルダッチ") return "ダブルダッチ由来の動きは、ロープの周期、ターンとの距離、音楽への乗せ方まで含めて技になります。";
+  if (disc === "体操") return "体操由来の動きは、姿勢、反発、着地の再現性が強みです。縄内では助走距離と着地後の抜け方を短く設計します。";
+  if (disc === "トリッキング") return "トリッキング由来の動きは、蹴り足、斜め軌道、ひねりの見せ方が特徴です。縄内では入りのステップを整理すると扱いやすくなります。";
+  if (disc === "ブレイキン") return "ブレイキン由来の動きは、床との接点、重心移動、回転の質感が特徴です。縄内ではロープに触れない低さと幅を把握します。";
+  if (disc === "カポエイラ") return "カポエイラ由来の動きは、蹴り上げ、片手支持、流れる切り返しが特徴です。縄内では動線を止めずに戻れるかを見ます。";
+  return "複数ジャンルの身体操作を、ダブルダッチの演技に使いやすい形で整理しています。";
+}
+
 function originNote(name, fam, disc) {
-  const disciplineNote =
-    disc === "ダブルダッチ"
-      ? "ダブルダッチの縄内リズムやロープとの距離感から見た技として整理しています。"
-      : `${disc}で使われる身体操作を、ダブルダッチの縄内で扱いやすいように分類しています。`;
-  return `${name}の厳密な発祥・初出は監修時に追記します。${disciplineNote}${fam}系として、前提技から発展技へ進む学習上の位置づけを重視しています。`;
+  return `${name}の厳密な発祥・初出は監修時に追記します。現時点では、技名の由来を断定するよりも、どのジャンルの身体操作として読み解けるかを優先して整理しています。${disciplineBridge(
+    disc
+  )}${familyConcept(fam)}`;
 }
 
 function practiceSteps(fam) {
@@ -152,7 +192,11 @@ for (const level of data.levels) {
           sql(name),
           "array[]::text[]",
           sql(`${disc} / ${fam}の${levelRole(level.level)}技。${practiceFocus}`),
-          sql(`${name}は、${disc}の要素を持つ${fam}系の技です。レベル${level.level}「${level.category}」では「${level.passCondition}」が目安です。${practiceFocus} 前提技・派生技・近い技は相関図で確認できます。`),
+          sql(
+            `${name}は、${disc}の要素を持つ${fam}系の技です。${familyConcept(fam)}レベル${level.level}「${level.category}」では「${level.passCondition}」が目安です。${practiceFocus} ${disciplineBridge(
+              disc
+            )} 前提技・派生技・近い技は相関図で確認できます。`
+          ),
           sql(originNote(name, fam, disc)),
           array(practiceSteps(fam)),
           array(commonMistakes(fam)),
@@ -167,9 +211,9 @@ for (const level of data.levels) {
           sql(disc),
           sql(fam),
           sql(axis(name)),
-          sql("未設定"),
-          sql("未設定"),
-          sql(level.level <= 2 ? "縄内アップ" : "縄内単発"),
+          sql(takeoff(name)),
+          sql(landing(name)),
+          sql(ropeContext(level.level, name)),
           array(tags),
           level.level,
           sql(level.category),

@@ -135,34 +135,43 @@ function levelRole(level: number) {
   return "十分な前提技が必要な高難度";
 }
 
+function familyConcept(family: string) {
+  if (family === "基礎ムーブ") return "縄の中で崩れない足順、低い姿勢、床移動を作る系統です。派手さよりもリズムの継続と入退場の安定が価値になります。";
+  if (family === "倒立・床基礎") return "手支持、受け身、肩の押し、体幹の締めを作る系統です。空中技に進む前に、床で体を支える感覚をそろえます。";
+  if (family === "側方・反発") return "側転、ロンダート、バク転など、床を押して次の技へ反発を残す系統です。助走と着地後の進行方向が学習の鍵になります。";
+  if (family === "空中回転") return "踏切で高さを作り、空中で姿勢をまとめ、着地でほどく系統です。縄内では回転そのものより入るタイミングと抜ける余白が重要です。";
+  if (family === "ひねり") return "縦回転や横回転に肩、目線、骨盤の向きを加える発展系統です。高さを失わずにひねり始める順番を管理します。";
+  if (family === "トリッキング") return "蹴り、片足踏切、斜め軌道を使って見せ方を作る系統です。技単体だけでなく、入り方と着地後の流れで印象が変わります。";
+  if (family === "ブレイキン・床回転") return "床支持と重心移動を使って回転やフリーズ感を作る系統です。縄との距離、床に置く面、回転幅の管理が大切です。";
+  if (family === "連続・創作") return "複数の技を順番、向き、音取りで組み合わせる系統です。個々の成功率だけでなく、つなぎのロスを減らすことが中心になります。";
+  return "この図鑑では、前提技から発展技へ進むための学習上の位置づけを重視しています。";
+}
+
+function disciplineBridge(discipline: string) {
+  if (discipline === "ダブルダッチ") return "ダブルダッチ由来の動きは、ロープの周期、ターンとの距離、音楽への乗せ方まで含めて技になります。";
+  if (discipline === "体操") return "体操由来の動きは、姿勢、反発、着地の再現性が強みです。縄内では助走距離と着地後の抜け方を短く設計します。";
+  if (discipline === "トリッキング") return "トリッキング由来の動きは、蹴り足、斜め軌道、ひねりの見せ方が特徴です。縄内では入りのステップを整理すると扱いやすくなります。";
+  if (discipline === "ブレイキン") return "ブレイキン由来の動きは、床との接点、重心移動、回転の質感が特徴です。縄内ではロープに触れない低さと幅を把握します。";
+  if (discipline === "カポエイラ") return "カポエイラ由来の動きは、蹴り上げ、片手支持、流れる切り返しが特徴です。縄内では動線を止めずに戻れるかを見ます。";
+  return "複数ジャンルの身体操作を、ダブルダッチの演技に使いやすい形で整理しています。";
+}
+
 function makeSummary(name: string, level: number, family: string, discipline: string) {
   return `${discipline} / ${family}の${levelRole(level)}技。${practiceFocus(name, family, discipline)}`;
 }
 
 function makeDescription(name: string, level: number, category: string, passCondition: string, family: string, discipline: string) {
-  return `${name}は、${discipline}の要素を持つ${family}系の技です。レベル${level}「${category}」では「${passCondition}」が目安です。${practiceFocus(
+  return `${name}は、${discipline}の要素を持つ${family}系の技です。${familyConcept(family)}レベル${level}「${category}」では「${passCondition}」が目安です。${practiceFocus(
     name,
     family,
     discipline
-  )} 前提技・派生技・近い技は相関図で確認できます。`;
+  )} ${disciplineBridge(discipline)} 前提技・派生技・近い技は相関図で確認できます。`;
 }
 
 function makeOriginNote(name: string, family: string, discipline: string) {
-  const disciplineNote =
-    discipline === "ダブルダッチ"
-      ? "ダブルダッチの縄内リズムやロープとの距離感から見た技として整理しています。"
-      : `${discipline}で使われる身体操作を、ダブルダッチの縄内で扱いやすいように分類しています。`;
-  const familyNote =
-    family === "ブレイキン・床回転"
-      ? "床支持、重心移動、回転継続の考え方を背景に見ると理解しやすい系統です。"
-      : family === "トリッキング"
-        ? "蹴り技、宙返り、ひねりをつなぐトリッキング文脈で見られる斜めの軌道が鍵になります。"
-        : family === "空中回転" || family === "ひねり"
-          ? "体操やトリッキングの空中姿勢を、縄のテンポに合わせて使う発展系として扱います。"
-          : family === "倒立・床基礎"
-            ? "体操の基礎姿勢や床運動の受け身を、縄内の安定感につなげるための土台です。"
-            : "この図鑑では、前提技から発展技へ進むための学習上の位置づけを重視しています。";
-  return `${name}の厳密な発祥・初出は監修時に追記します。${disciplineNote}${familyNote}`;
+  return `${name}の厳密な発祥・初出は監修時に追記します。現時点では、技名の由来を断定するよりも、どのジャンルの身体操作として読み解けるかを優先して整理しています。${disciplineBridge(
+    discipline
+  )}${familyConcept(family)}`;
 }
 
 function makePracticeSteps(name: string, family: string, discipline: string) {

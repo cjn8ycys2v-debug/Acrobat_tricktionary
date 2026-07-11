@@ -34,6 +34,7 @@ const edgeColors: Record<RelationType, string> = {
 const familyColors = ["#24514a", "#d76147", "#317aa3", "#8a5bbf", "#c48a1b", "#bf3f6f", "#455a64", "#6b7f2a"];
 const adminNodeWidth = 222;
 const adminNodeCenterY = 40;
+const relationTypeOptions: RelationType[] = ["prerequisite", "progression", "variation", "combo"];
 
 const edgeTypes = {
   route: RouteEdge
@@ -224,6 +225,50 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
     setMessage("中継点を追加しました。丸をドラッグすると線の通り道を調整できます。");
   }
 
+  function updateSelectedRelation(patch: Partial<Pick<TrickRelation, "type" | "note" | "strength">>) {
+    if (!selectedRelation) {
+      setMessage("先に編集したい線をクリックしてください。");
+      return;
+    }
+
+    if (patch.type) {
+      const duplicated = relations.some(
+        (relation) =>
+          relation.id !== selectedRelation.id &&
+          relation.fromTrickId === selectedRelation.fromTrickId &&
+          relation.toTrickId === selectedRelation.toTrickId &&
+          relation.type === patch.type
+      );
+      if (duplicated) {
+        setMessage("同じ向き・同じ種類の線がすでにあります。");
+        return;
+      }
+    }
+
+    onRelationsChange(
+      relations.map((relation) =>
+        relation.id === selectedRelation.id
+          ? {
+              ...relation,
+              ...patch,
+              strength: patch.strength ? normalizeStrength(patch.strength) : relation.strength
+            }
+          : relation
+      )
+    );
+    setMessage("線の内容を更新しました。DBに反映するには「線を保存」を押してください。");
+  }
+
+  function deleteSelectedRelation() {
+    if (!selectedRelation) {
+      setMessage("先に削除したい線をクリックしてください。");
+      return;
+    }
+    onRelationsChange(relations.filter((relation) => relation.id !== selectedRelation.id));
+    setSelectedEdgeId(null);
+    setMessage(`${selectedFromName} → ${selectedToName} の線を削除しました。DBに反映するには「線を保存」を押してください。`);
+  }
+
   function clearSelectedWaypoints() {
     if (!selectedRelation) {
       setMessage("先に編集したい線をクリックしてください。");
@@ -348,7 +393,7 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
               onChange={(event) => setNewRelationType(event.target.value as RelationType)}
               className="h-8 rounded border border-ink/10 bg-white px-2 text-xs font-black outline-none focus:border-pine"
             >
-              {(["progression", "prerequisite"] as RelationType[]).map((type) => (
+              {relationTypeOptions.map((type) => (
                 <option key={type} value={type}>
                   {relationLabel(type)}
                 </option>
@@ -424,6 +469,41 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
                 <p className="mt-1 text-xs font-semibold text-graphite/68">
                   {relationLabel(selectedRelation.type)} / 中継点 {selectedRelation.waypoints.length}個
                 </p>
+                <div className="mt-3 grid gap-2">
+                  <label className="text-[10px] font-black text-graphite/58">
+                    種類
+                    <select
+                      value={selectedRelation.type}
+                      onChange={(event) => updateSelectedRelation({ type: event.target.value as RelationType })}
+                      className="mt-1 h-9 w-full rounded border border-ink/10 bg-white px-2 text-xs font-black text-ink outline-none focus:border-pine"
+                    >
+                      {relationTypeOptions.map((type) => (
+                        <option key={type} value={type}>
+                          {relationLabel(type)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="text-[10px] font-black text-graphite/58">
+                    強さ
+                    <input
+                      min={1}
+                      max={5}
+                      type="number"
+                      value={selectedRelation.strength}
+                      onChange={(event) => updateSelectedRelation({ strength: normalizeStrength(Number(event.target.value)) })}
+                      className="mt-1 h-9 w-full rounded border border-ink/10 bg-white px-2 text-xs font-black text-ink outline-none focus:border-pine"
+                    />
+                  </label>
+                  <label className="text-[10px] font-black text-graphite/58">
+                    メモ
+                    <textarea
+                      value={selectedRelation.note}
+                      onChange={(event) => updateSelectedRelation({ note: event.target.value })}
+                      className="mt-1 min-h-16 w-full rounded border border-ink/10 bg-white px-2 py-2 text-xs font-semibold leading-5 text-ink outline-none focus:border-pine"
+                    />
+                  </label>
+                </div>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
                   <button
                     type="button"
@@ -440,6 +520,14 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
                   >
                     <Trash2 aria-hidden className="size-4" />
                     中継点を全削除
+                  </button>
+                  <button
+                    type="button"
+                    onClick={deleteSelectedRelation}
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded border border-coral/45 bg-white px-3 text-sm font-black text-coral transition hover:bg-coral hover:text-white sm:col-span-2 xl:col-span-1"
+                  >
+                    <Trash2 aria-hidden className="size-4" />
+                    この線を削除
                   </button>
                 </div>
                 {selectedRelation.waypoints.length ? (
@@ -629,4 +717,8 @@ function midpoint(start: RelationWaypoint, end: RelationWaypoint): RelationWaypo
     x: (start.x + end.x) / 2,
     y: (start.y + end.y) / 2
   });
+}
+
+function normalizeStrength(value: number): 1 | 2 | 3 | 4 | 5 {
+  return Math.max(1, Math.min(5, Math.round(value || 3))) as 1 | 2 | 3 | 4 | 5;
 }
