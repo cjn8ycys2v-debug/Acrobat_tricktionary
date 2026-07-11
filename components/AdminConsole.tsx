@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Database, FileVideo, GitBranch, Layers, LinkIcon, Lock, Plus, Save, Search, Trash2, Upload, type LucideIcon } from "lucide-react";
+import { CheckCircle2, Clock, Database, ExternalLink, FileVideo, GitBranch, Layers, LinkIcon, Lock, Plus, Save, Search, Trash2, Upload, type LucideIcon } from "lucide-react";
 import { AdminMapEditor } from "@/components/AdminMapEditor";
 import { RelationBulkEditor } from "@/components/RelationBulkEditor";
 import type { LevelTest, MediaAsset, Source, Trick, TrickMapPosition, TrickRelation } from "@/lib/types";
@@ -660,12 +660,13 @@ function KnowledgeStatusField({ value, onChange }: { value: Trick["knowledgeStat
   );
 }
 
-function Field({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+function Field({ label, value, placeholder, onChange }: { label: string; value: string; placeholder?: string; onChange: (value: string) => void }) {
   return (
     <label>
       <span className="mb-2 block text-sm font-bold text-ink">{label}</span>
       <input
         value={value}
+        placeholder={placeholder}
         onChange={(event) => onChange(event.target.value)}
         className="h-11 w-full rounded border border-ink/14 bg-paper px-3 text-sm outline-none focus:border-pine"
       />
@@ -896,66 +897,111 @@ function VideoReferenceEditor({
   onUpdate: (id: string, patch: Partial<MediaAsset>) => void;
   onRemove: (id: string) => void;
 }) {
+  const videoStats = useMemo(
+    () => ({
+      ready: videos.filter((asset) => videoWorkflowState(asset).kind === "ready").length,
+      needsPublishUrl: videos.filter((asset) => videoWorkflowState(asset).kind === "needsPublishUrl").length,
+      needsConsent: videos.filter((asset) => videoWorkflowState(asset).kind === "needsConsent").length
+    }),
+    [videos]
+  );
+
   return (
     <div className="grid gap-3">
       <div className="rounded border border-saffron/35 bg-saffron/10 px-3 py-2 text-xs font-semibold leading-5 text-graphite/78">
         参考URLは編集メモです。公開画面には、許諾済みの公開用URLまたはStorage動画だけを表示します。
       </div>
+      <div className="grid grid-cols-3 gap-2">
+        <VideoStat label="差し替え待ち" value={videoStats.needsPublishUrl} />
+        <VideoStat label="確認待ち" value={videoStats.needsConsent} />
+        <VideoStat label="埋め込みOK" value={videoStats.ready} />
+      </div>
       {videos.length ? (
         <div className="grid gap-3">
-          {videos.map((asset, index) => (
-            <section key={asset.id} className="rounded border border-ink/10 bg-paper p-3">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <p className="text-xs font-black text-graphite/62">動画 {index + 1}</p>
-                <button
-                  type="button"
-                  onClick={() => onRemove(asset.id)}
-                  className="grid size-8 place-items-center rounded border border-ink/10 bg-white text-graphite transition hover:border-coral hover:text-coral"
-                  aria-label={`動画${index + 1}を削除`}
-                >
-                  <Trash2 aria-hidden className="size-4" />
-                </button>
-              </div>
-              <div className="grid gap-3">
-                <Field
-                  label="公開用URL / Storage path"
-                  value={asset.storagePath}
-                  onChange={(value) => onUpdate(asset.id, { storagePath: value })}
-                />
-                <Field
-                  label="参考YouTube URL"
-                  value={asset.referenceUrl ?? ""}
-                  onChange={(value) => onUpdate(asset.id, { referenceUrl: value })}
-                />
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <OptionalSecondField
-                    label="開始秒"
-                    value={asset.referenceStartSec}
-                    onChange={(value) => onUpdate(asset.id, { referenceStartSec: value })}
-                  />
-                  <OptionalSecondField
-                    label="終了秒"
-                    value={asset.referenceEndSec}
-                    onChange={(value) => onUpdate(asset.id, { referenceEndSec: value })}
-                  />
+          {videos.map((asset, index) => {
+            const state = videoWorkflowState(asset);
+            const timedUrl = timedReferenceUrl(asset);
+            const range = formatReferenceRange(asset);
+            return (
+              <section key={asset.id} className="rounded border border-ink/10 bg-paper p-3">
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-black text-graphite/62">動画 {index + 1}</p>
+                    <span className={`mt-1.5 inline-flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] font-black ${state.className}`}>
+                      {state.kind === "ready" ? <CheckCircle2 aria-hidden className="size-3.5" /> : <Clock aria-hidden className="size-3.5" />}
+                      {state.label}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onRemove(asset.id)}
+                    className="grid size-8 place-items-center rounded border border-ink/10 bg-white text-graphite transition hover:border-coral hover:text-coral"
+                    aria-label={`動画${index + 1}を削除`}
+                  >
+                    <Trash2 aria-hidden className="size-4" />
+                  </button>
                 </div>
-                <Field
-                  label="権利・許諾メモ"
-                  value={asset.rightsNote ?? ""}
-                  onChange={(value) => onUpdate(asset.id, { rightsNote: value })}
-                />
-                <label className="flex items-center gap-2 text-sm font-semibold text-graphite">
-                  <input
-                    type="checkbox"
-                    checked={asset.consentChecked}
-                    onChange={(event) => onUpdate(asset.id, { consentChecked: event.target.checked })}
-                    className="size-4 accent-pine"
+                <div className="grid gap-3">
+                  <Field
+                    label="公開用URL / Storage path"
+                    value={asset.storagePath}
+                    placeholder="自分の限定公開YouTube URL または Storage path"
+                    onChange={(value) => onUpdate(asset.id, { storagePath: value })}
                   />
-                  公開利用できる動画であることを確認済み
-                </label>
-              </div>
-            </section>
-          ))}
+                  <Field
+                    label="参考YouTube URL"
+                    value={asset.referenceUrl ?? ""}
+                    placeholder="参考にするYouTube URL"
+                    onChange={(value) => onUpdate(asset.id, { referenceUrl: value })}
+                  />
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <OptionalSecondField
+                      label="参考開始秒"
+                      value={asset.referenceStartSec}
+                      onChange={(value) => onUpdate(asset.id, { referenceStartSec: value })}
+                    />
+                    <OptionalSecondField
+                      label="参考終了秒"
+                      value={asset.referenceEndSec}
+                      onChange={(value) => onUpdate(asset.id, { referenceEndSec: value })}
+                    />
+                  </div>
+                  {timedUrl ? (
+                    <a
+                      href={timedUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex min-h-9 items-center gap-2 rounded border border-ink/10 bg-white px-3 py-2 text-xs font-black text-pine transition hover:border-pine"
+                    >
+                      <ExternalLink aria-hidden className="size-4 shrink-0" />
+                      参考区間を開く{range ? ` / ${range}` : ""}
+                    </a>
+                  ) : null}
+                  <Field
+                    label="権利・許諾メモ"
+                    value={asset.rightsNote ?? ""}
+                    placeholder="自分で再アップロード済み、出演同意確認済み など"
+                    onChange={(value) => onUpdate(asset.id, { rightsNote: value })}
+                  />
+                  <Field
+                    label="表示クレジット / 撮影者"
+                    value={asset.credit ?? ""}
+                    placeholder="任意"
+                    onChange={(value) => onUpdate(asset.id, { credit: value })}
+                  />
+                  <label className="flex items-center gap-2 text-sm font-semibold text-graphite">
+                    <input
+                      type="checkbox"
+                      checked={asset.consentChecked}
+                      onChange={(event) => onUpdate(asset.id, { consentChecked: event.target.checked })}
+                      className="size-4 accent-pine"
+                    />
+                    公開利用できる動画であることを確認済み
+                  </label>
+                </div>
+              </section>
+            );
+          })}
         </div>
       ) : (
         <p className="rounded bg-paper px-3 py-2 text-sm font-semibold text-graphite/68">動画候補はまだありません。</p>
@@ -970,6 +1016,67 @@ function VideoReferenceEditor({
       </button>
     </div>
   );
+}
+
+function VideoStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded border border-ink/10 bg-paper px-2 py-2 text-center">
+      <p className="text-[10px] font-black text-graphite/58">{label}</p>
+      <p className="mt-1 text-lg font-black text-ink">{value}</p>
+    </div>
+  );
+}
+
+function videoWorkflowState(asset: MediaAsset) {
+  if (asset.storagePath.trim() && asset.consentChecked) {
+    return {
+      kind: "ready" as const,
+      label: "埋め込みOK",
+      className: "border-pine/25 bg-skywash text-pine"
+    };
+  }
+  if (asset.storagePath.trim()) {
+    return {
+      kind: "needsConsent" as const,
+      label: "確認待ち",
+      className: "border-saffron/45 bg-saffron/12 text-graphite"
+    };
+  }
+  if (asset.referenceUrl?.trim()) {
+    return {
+      kind: "needsPublishUrl" as const,
+      label: "差し替え待ち",
+      className: "border-coral/30 bg-coral/8 text-coral"
+    };
+  }
+  return {
+    kind: "empty" as const,
+    label: "未指定",
+    className: "border-ink/10 bg-white text-graphite/70"
+  };
+}
+
+function timedReferenceUrl(asset: MediaAsset) {
+  if (!asset.referenceUrl) return "";
+  try {
+    const url = new URL(asset.referenceUrl);
+    if (asset.referenceStartSec !== undefined) {
+      if (url.hostname.replace(/^www\./, "") === "youtu.be") {
+        url.searchParams.set("t", `${asset.referenceStartSec}s`);
+      } else {
+        url.searchParams.set("start", String(asset.referenceStartSec));
+      }
+    }
+    return url.toString();
+  } catch {
+    return "";
+  }
+}
+
+function formatReferenceRange(asset: MediaAsset) {
+  if (asset.referenceStartSec === undefined && asset.referenceEndSec === undefined) return "";
+  const start = asset.referenceStartSec ?? 0;
+  return asset.referenceEndSec === undefined ? `${start}s〜` : `${start}s〜${asset.referenceEndSec}s`;
 }
 
 function OptionalSecondField({ label, value, onChange }: { label: string; value?: number; onChange: (value: number | undefined) => void }) {

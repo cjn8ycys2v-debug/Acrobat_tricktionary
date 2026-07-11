@@ -21,7 +21,7 @@ export default async function TrickDetailPage({ params }: { params: Promise<{ sl
   const incoming = atlas.relations.filter((relation) => relation.toTrickId === trick.id);
   const outgoing = atlas.relations.filter((relation) => relation.fromTrickId === trick.id);
   const mediaAssets = atlas.mediaAssets.filter((asset) => asset.trickId === trick.id && asset.type === "video");
-  const primaryVideo = mediaAssets.find((asset) => asset.storagePath.trim());
+  const primaryVideo = mediaAssets.find((asset) => asset.storagePath.trim() && asset.consentChecked);
   const source = trick.showSource ? atlas.sources.find((item) => item.id === trick.sourceId) : undefined;
 
   return (
