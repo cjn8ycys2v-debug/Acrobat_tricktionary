@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Activity, Compass, Filter, GitBranch, Search, ShieldAlert, SlidersHorizontal, Waypoints, X } from "lucide-react";
+import { Activity, Compass, Filter, GitBranch, Map, Search, ShieldAlert, SlidersHorizontal, Waypoints, X } from "lucide-react";
 import type { Trick } from "@/lib/types";
 import { TrickCard } from "@/components/TrickCard";
 import { disciplineDescriptions } from "@/lib/taxonomy";
@@ -163,6 +164,7 @@ export function TrickExplorer({ tricks, options }: Props) {
       risk !== allValue ||
       tag !== allValue
   );
+  const mapHref = makeMapHref({ query, discipline, family });
 
   function resetFilters() {
     setQuery("");
@@ -330,10 +332,19 @@ export function TrickExplorer({ tricks, options }: Props) {
       </div>
 
       <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <p className="text-sm font-semibold text-graphite/72">
-          {filtered.length} / {tricks.length} 技
-        </p>
-        <p className="text-xs text-graphite/62">安全な環境と補助者のもとで段階的に練習してください。</p>
+        <div>
+          <p className="text-sm font-semibold text-graphite/72">
+            {filtered.length} / {tricks.length} 技
+          </p>
+          <p className="mt-1 text-xs text-graphite/62">安全な環境と補助者のもとで段階的に練習してください。</p>
+        </div>
+        <Link
+          href={mapHref}
+          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded bg-pine px-3 text-sm font-black text-white transition hover:bg-ink sm:w-auto"
+        >
+          <Map aria-hidden className="size-4" />
+          この条件を相関図で見る
+        </Link>
       </div>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -358,6 +369,15 @@ function matchesPreset(trick: Trick, criteria: PresetCriteria) {
     (!criteria.ropeContext || trick.ropeContext === criteria.ropeContext) &&
     (!criteria.tag || trick.tags.includes(criteria.tag))
   );
+}
+
+function makeMapHref({ query, discipline, family }: { query: string; discipline: string; family: string }) {
+  const params: Record<string, string> = {};
+  const normalizedQuery = query.trim();
+  if (normalizedQuery) params.q = normalizedQuery;
+  if (discipline !== allValue) params.discipline = discipline;
+  if (family !== allValue) params.family = family;
+  return Object.keys(params).length ? { pathname: "/map", query: params } : { pathname: "/map" };
 }
 
 function Select({

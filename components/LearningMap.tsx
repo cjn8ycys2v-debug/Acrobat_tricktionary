@@ -147,16 +147,24 @@ export function LearningMap({
   useEffect(() => {
     if (initialFocusApplied.current || !allGraphTricks.length) return;
     const params = new URLSearchParams(window.location.search);
-    const focusValue = (params.get("trick") ?? params.get("q") ?? "").trim();
+    const trickValue = (params.get("trick") ?? "").trim();
+    const queryValue = (params.get("q") ?? "").trim();
+    const requestedDiscipline = (params.get("discipline") ?? "").trim();
+    const requestedFamily = (params.get("family") ?? "").trim();
     initialFocusApplied.current = true;
-    if (!focusValue) return;
 
-    const focused = allGraphTricks.find((trick) => trick.slug === focusValue || trick.id === focusValue || trick.name === focusValue);
-    setSelectedDiscipline(allDisciplineFilter);
-    setSelectedFamily(allFamilyFilter);
+    const disciplineNames = new Set(allGraphTricks.map((trick) => trick.discipline));
+    const familyNames = new Set(allGraphTricks.map((trick) => trick.family));
+    setSelectedDiscipline(disciplineNames.has(requestedDiscipline) ? requestedDiscipline : allDisciplineFilter);
+    setSelectedFamily(familyNames.has(requestedFamily) ? requestedFamily : allFamilyFilter);
     setRelationTypeFilters(defaultRelationTypeFilters);
     setDirectOnly(true);
-    setQuery(focused?.name ?? focusValue);
+
+    const focusValue = trickValue || queryValue;
+    if (!focusValue && !requestedDiscipline && !requestedFamily) return;
+
+    const focused = allGraphTricks.find((trick) => trick.slug === focusValue || trick.id === focusValue || trick.name === focusValue);
+    setQuery(focused?.name ?? queryValue);
     if (focused) setActiveNodeId(focused.id);
   }, [allGraphTricks]);
 
