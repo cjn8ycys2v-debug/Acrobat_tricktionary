@@ -47,6 +47,8 @@ export function TrickExplorer({ tricks, options }: Props) {
           ...trick.commonMistakes,
           ...trick.safetyNotes,
           trick.coachComment,
+          trick.knowledgeReviewedBy,
+          ...trick.knowledgeSourceUrls,
           trick.discipline,
           trick.family,
           trick.axis,

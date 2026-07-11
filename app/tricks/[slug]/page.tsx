@@ -65,6 +65,7 @@ export default async function TrickDetailPage({ params }: { params: Promise<{ sl
               <BookOpenText aria-hidden className="size-5 text-pine" />
               図鑑メモ
             </h2>
+            <KnowledgeReviewBadge trick={trick} />
             <div className="grid gap-5">
               {trick.originNote ? (
                 <KnowledgeBlock icon={Lightbulb} title="発祥・由来" tone="pine">
@@ -78,6 +79,9 @@ export default async function TrickDetailPage({ params }: { params: Promise<{ sl
                 <KnowledgeBlock icon={BookOpenText} title="監修者コメント" tone="graphite">
                   <p className="text-sm leading-7 text-graphite/82">{trick.coachComment}</p>
                 </KnowledgeBlock>
+              ) : null}
+              {trick.showKnowledgeSources && trick.knowledgeSourceUrls.length ? (
+                <KnowledgeSources urls={trick.knowledgeSourceUrls} />
               ) : null}
             </div>
           </div>
@@ -125,6 +129,31 @@ export default async function TrickDetailPage({ params }: { params: Promise<{ sl
         </aside>
       </div>
     </main>
+  );
+}
+
+function KnowledgeReviewBadge({ trick }: { trick: Trick }) {
+  const label = {
+    draft: "下書き",
+    reviewing: "監修中",
+    reviewed: "監修済み"
+  }[trick.knowledgeStatus];
+  const message =
+    trick.knowledgeStatus === "reviewed"
+      ? `${trick.knowledgeReviewedBy ? `${trick.knowledgeReviewedBy} による` : ""}監修済みの知識メモです。`
+      : "この知識メモは編集中です。由来や背景は監修後に更新します。";
+  const className =
+    trick.knowledgeStatus === "reviewed"
+      ? "border-pine/25 bg-skywash text-pine"
+      : trick.knowledgeStatus === "reviewing"
+        ? "border-saffron/40 bg-saffron/12 text-graphite"
+        : "border-ink/10 bg-paper text-graphite/76";
+
+  return (
+    <div className={`mb-5 rounded border px-3 py-2 text-xs font-bold leading-5 ${className}`}>
+      <span className="mr-2 rounded bg-white/80 px-2 py-0.5 font-black">{label}</span>
+      {message}
+    </div>
   );
 }
 
@@ -180,6 +209,22 @@ function KnowledgeList({
           </li>
         ))}
       </ol>
+    </KnowledgeBlock>
+  );
+}
+
+function KnowledgeSources({ urls }: { urls: string[] }) {
+  return (
+    <KnowledgeBlock icon={BookOpenText} title="参考リンク" tone="graphite">
+      <ul className="grid gap-1.5 text-sm leading-6">
+        {urls.map((url) => (
+          <li key={url} className="min-w-0">
+            <a href={url} target="_blank" rel="noreferrer" className="break-all font-bold text-pine underline-offset-4 hover:underline">
+              {url}
+            </a>
+          </li>
+        ))}
+      </ul>
     </KnowledgeBlock>
   );
 }

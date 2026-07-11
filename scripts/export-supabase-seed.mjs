@@ -145,7 +145,7 @@ for (const level of data.levels) {
     const tags = [disc, fam, `Lv.${level.level}`];
     const practiceFocus = focus(name, fam, disc);
     lines.push(
-      `insert into public.tricks (id, slug, name, aliases, summary, description, origin_note, practice_steps, common_mistakes, safety_notes, coach_comment, difficulty, risk_level, discipline, family, axis, takeoff, landing, rope_context, tags, level, level_category, status, source_id, show_source) values (` +
+      `insert into public.tricks (id, slug, name, aliases, summary, description, origin_note, practice_steps, common_mistakes, safety_notes, coach_comment, knowledge_status, knowledge_reviewed_by, knowledge_source_urls, show_knowledge_sources, difficulty, risk_level, discipline, family, axis, takeoff, landing, rope_context, tags, level, level_category, status, source_id, show_source) values (` +
         [
           sql(id),
           sql(slugFor(trickIndex, name)),
@@ -158,6 +158,10 @@ for (const level of data.levels) {
           array(commonMistakes(fam)),
           array(safetyNotes(fam, level.level)),
           sql(`監修メモ未設定。${fam}系として、成功条件・補助方法・縄内での注意点を監修後に追記してください。`),
+          sql("draft"),
+          sql(""),
+          "array[]::text[]",
+          "false",
           difficultyByLevel.get(level.level) ?? 3,
           riskByLevel.get(level.level) ?? 3,
           sql(disc),

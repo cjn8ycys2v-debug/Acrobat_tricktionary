@@ -25,6 +25,10 @@ type TrickRow = {
   common_mistakes?: string[] | null;
   safety_notes?: string[] | null;
   coach_comment?: string | null;
+  knowledge_status?: Trick["knowledgeStatus"] | null;
+  knowledge_reviewed_by?: string | null;
+  knowledge_source_urls?: string[] | null;
+  show_knowledge_sources?: boolean | null;
   difficulty: number;
   risk_level: number;
   discipline?: string | null;
@@ -256,6 +260,10 @@ function mapTrick(row: TrickRow, sourceKeyByUuid: Map<string, string>): Trick {
     commonMistakes: row.common_mistakes ?? [],
     safetyNotes: row.safety_notes ?? [],
     coachComment: row.coach_comment ?? "",
+    knowledgeStatus: normalizeKnowledgeStatus(row.knowledge_status),
+    knowledgeReviewedBy: row.knowledge_reviewed_by ?? "",
+    knowledgeSourceUrls: row.knowledge_source_urls ?? [],
+    showKnowledgeSources: row.show_knowledge_sources ?? false,
     difficulty: normalizeRating(row.difficulty),
     riskLevel: normalizeRating(row.risk_level),
     discipline: row.discipline ?? deriveDiscipline(row.name, row.family),
@@ -291,6 +299,10 @@ function mapMedia(row: MediaRow): MediaAsset {
 
 function normalizeRating(value: number): 1 | 2 | 3 | 4 | 5 {
   return Math.max(1, Math.min(5, value)) as 1 | 2 | 3 | 4 | 5;
+}
+
+function normalizeKnowledgeStatus(value: unknown): Trick["knowledgeStatus"] {
+  return value === "reviewing" || value === "reviewed" ? value : "draft";
 }
 
 function normalizeWaypoints(value: unknown): RelationWaypoint[] {

@@ -1,4 +1,5 @@
 export type TrickStatus = "draft" | "published";
+export type TrickKnowledgeStatus = "draft" | "reviewing" | "reviewed";
 export type RelationType = "prerequisite" | "progression" | "variation" | "combo";
 export type MediaType = "video" | "poster";
 
@@ -31,6 +32,10 @@ export type Trick = {
   commonMistakes: string[];
   safetyNotes: string[];
   coachComment: string;
+  knowledgeStatus: TrickKnowledgeStatus;
+  knowledgeReviewedBy: string;
+  knowledgeSourceUrls: string[];
+  showKnowledgeSources: boolean;
   difficulty: 1 | 2 | 3 | 4 | 5;
   riskLevel: 1 | 2 | 3 | 4 | 5;
   discipline: string;

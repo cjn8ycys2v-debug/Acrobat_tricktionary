@@ -70,6 +70,10 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
       commonMistakes: [],
       safetyNotes: [],
       coachComment: "",
+      knowledgeStatus: "draft",
+      knowledgeReviewedBy: "",
+      knowledgeSourceUrls: [],
+      showKnowledgeSources: false,
       difficulty: 1,
       riskLevel: 1,
       discipline: "ダブルダッチ",
@@ -151,6 +155,10 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
         commonMistakes: selected.commonMistakes,
         safetyNotes: selected.safetyNotes,
         coachComment: selected.coachComment,
+        knowledgeStatus: selected.knowledgeStatus,
+        knowledgeReviewedBy: selected.knowledgeReviewedBy,
+        knowledgeSourceUrls: selected.knowledgeSourceUrls,
+        showKnowledgeSources: selected.showKnowledgeSources,
         difficulty: selected.difficulty,
         riskLevel: selected.riskLevel,
         discipline: selected.discipline,
@@ -447,6 +455,17 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
 
                   <Panel icon={Database} title="図鑑メモ">
                     <div className="grid gap-4">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <KnowledgeStatusField
+                          value={selected.knowledgeStatus}
+                          onChange={(value) => updateSelected("knowledgeStatus", value)}
+                        />
+                        <Field
+                          label="監修者 / 監修チーム"
+                          value={selected.knowledgeReviewedBy}
+                          onChange={(value) => updateSelected("knowledgeReviewedBy", value)}
+                        />
+                      </div>
                       <LongTextField
                         label="発祥・由来"
                         value={selected.originNote}
@@ -472,6 +491,20 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
                         value={selected.coachComment}
                         onChange={(value) => updateSelected("coachComment", value)}
                       />
+                      <TextListField
+                        label="参考リンク"
+                        values={selected.knowledgeSourceUrls}
+                        onChange={(value) => updateSelected("knowledgeSourceUrls", value)}
+                      />
+                      <label className="flex items-center gap-2 text-sm font-bold text-graphite">
+                        <input
+                          type="checkbox"
+                          checked={selected.showKnowledgeSources}
+                          onChange={(event) => updateSelected("showKnowledgeSources", event.target.checked)}
+                          className="size-4 accent-pine"
+                        />
+                        参考リンクを公開ページに表示する
+                      </label>
                     </div>
                   </Panel>
                 </div>
@@ -605,6 +638,23 @@ function StatusField({ value, onChange }: { value: Trick["status"]; onChange: (v
       >
         <option value="draft">下書き</option>
         <option value="published">公開</option>
+      </select>
+    </label>
+  );
+}
+
+function KnowledgeStatusField({ value, onChange }: { value: Trick["knowledgeStatus"]; onChange: (value: Trick["knowledgeStatus"]) => void }) {
+  return (
+    <label>
+      <span className="mb-2 block text-sm font-bold text-ink">知識メモの状態</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value as Trick["knowledgeStatus"])}
+        className="h-11 w-full rounded border border-ink/14 bg-paper px-3 text-sm outline-none focus:border-pine"
+      >
+        <option value="draft">下書き</option>
+        <option value="reviewing">監修中</option>
+        <option value="reviewed">監修済み</option>
       </select>
     </label>
   );

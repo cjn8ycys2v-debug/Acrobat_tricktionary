@@ -592,6 +592,8 @@ function matchesTrickQuery(trick: Trick, normalizedQuery: string) {
     ...trick.commonMistakes,
     ...trick.safetyNotes,
     trick.coachComment,
+    trick.knowledgeReviewedBy,
+    ...trick.knowledgeSourceUrls,
     ...trick.aliases,
     ...trick.tags
   ]
