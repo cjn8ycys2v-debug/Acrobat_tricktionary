@@ -50,6 +50,16 @@ function slugFor(index, name) {
   return ascii ? `t${String(index + 1).padStart(3, "0")}-${ascii}` : `t${String(index + 1).padStart(3, "0")}`;
 }
 
+const removedHistoricIndexes = [0, 15, 16];
+
+function stableHistoricIndex(visibleIndex) {
+  let index = visibleIndex;
+  for (const removedIndex of removedHistoricIndexes) {
+    if (index >= removedIndex) index += 1;
+  }
+  return index;
+}
+
 function family(name) {
   if (/(オリジナル技|空中系2つ以上の連続技)/.test(name)) return "連続・創作";
   if (/(ツイスト|ひねり|フル|コーク|ロデオ|クロスアウト|Aトラックス|1\.5回ひねり|フルハイパー|溜め背面)/.test(name)) return "ひねり";
@@ -169,7 +179,7 @@ function safetyNotes(fam, level) {
 const source = data.sources[0];
 const sourceUuid = "00000000-0000-4000-8000-000000000001";
 const trickUuids = new Map();
-let trickIndex = 0;
+let visibleTrickIndex = 0;
 const lines = [
   "begin;",
   `insert into public.sources (id, source_key, title, kind, url, show_by_default) values (${sql(sourceUuid)}, ${sql(source.id)}, ${sql(source.title)}, ${sql(source.kind)}, ${sql(source.url)}, false) on conflict (source_key) do nothing;`
@@ -178,7 +188,8 @@ const lines = [
 for (const level of data.levels) {
   for (const name of level.trickNames) {
     if (trickUuids.has(name)) continue;
-    const id = `00000000-0000-4000-9000-${String(trickIndex + 1).padStart(12, "0")}`;
+    const historicIndex = stableHistoricIndex(visibleTrickIndex);
+    const id = `00000000-0000-4000-9000-${String(historicIndex + 1).padStart(12, "0")}`;
     trickUuids.set(name, id);
     const fam = family(name);
     const disc = discipline(name, fam);
@@ -188,7 +199,7 @@ for (const level of data.levels) {
       `insert into public.tricks (id, slug, name, aliases, summary, description, origin_note, practice_steps, common_mistakes, safety_notes, coach_comment, knowledge_status, knowledge_reviewed_by, knowledge_source_urls, show_knowledge_sources, difficulty, risk_level, discipline, family, axis, takeoff, landing, rope_context, tags, level, level_category, status, source_id, show_source) values (` +
         [
           sql(id),
-          sql(slugFor(trickIndex, name)),
+          sql(slugFor(historicIndex, name)),
           sql(name),
           "array[]::text[]",
           sql(`${disc} / ${fam}の${levelRole(level.level)}技。${practiceFocus}`),
@@ -223,7 +234,7 @@ for (const level of data.levels) {
         ].join(", ") +
         ") on conflict (slug) do update set summary = excluded.summary, description = excluded.description, origin_note = excluded.origin_note, practice_steps = excluded.practice_steps, common_mistakes = excluded.common_mistakes, safety_notes = excluded.safety_notes, coach_comment = excluded.coach_comment, difficulty = excluded.difficulty, risk_level = excluded.risk_level, discipline = excluded.discipline, family = excluded.family, axis = excluded.axis, takeoff = excluded.takeoff, landing = excluded.landing, rope_context = excluded.rope_context, tags = excluded.tags, level = excluded.level, level_category = excluded.level_category, status = excluded.status, source_id = excluded.source_id;"
     );
-    trickIndex += 1;
+    visibleTrickIndex += 1;
   }
 }
 

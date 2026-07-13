@@ -34,7 +34,6 @@ const riskByLevel = new Map<number, Trick["riskLevel"]>([
 ]);
 
 const explicitTags: Record<string, string[]> = {
-  "ブリッジ30秒": ["柔軟性", "肩", "背中"],
   "ロンダート": ["反発", "助走", "接続"],
   "バク転": ["後方", "反発", "補助推奨"],
   "ロン宙": ["後方宙返り", "助走", "高さ"],
@@ -60,6 +59,16 @@ function slugFor(index: number, name: string) {
 
   const ascii = normalized.replace(/[^a-z0-9-]/g, "");
   return ascii ? `t${String(index + 1).padStart(3, "0")}-${ascii}` : `t${String(index + 1).padStart(3, "0")}`;
+}
+
+const removedHistoricIndexes = [0, 15, 16];
+
+function stableHistoricIndex(visibleIndex: number) {
+  let index = visibleIndex;
+  for (const removedIndex of removedHistoricIndexes) {
+    if (index >= removedIndex) index += 1;
+  }
+  return index;
 }
 
 function deriveFamily(name: string) {
@@ -209,18 +218,19 @@ function makeCoachComment(family: string) {
 
 export function getAllTricks(): Trick[] {
   const seen = new Map<string, Trick>();
-  let index = 0;
+  let visibleIndex = 0;
 
   for (const level of levelTests) {
     for (const name of level.trickNames) {
       if (seen.has(name)) continue;
+      const historicIndex = stableHistoricIndex(visibleIndex);
 
       const family = deriveFamily(name);
       const discipline = deriveDiscipline(name, family);
       const axis = deriveAxis(name);
       const trick: Trick = {
-        id: `trick-${String(index + 1).padStart(3, "0")}`,
-        slug: slugFor(index, name),
+        id: `trick-${String(historicIndex + 1).padStart(3, "0")}`,
+        slug: slugFor(historicIndex, name),
         name,
         aliases: [],
         summary: makeSummary(name, level.level, family, discipline),
@@ -251,7 +261,7 @@ export function getAllTricks(): Trick[] {
       };
 
       seen.set(name, trick);
-      index += 1;
+      visibleIndex += 1;
     }
   }
 

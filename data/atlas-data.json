@@ -16,7 +16,6 @@
       "passCondition": "記載技をすべてクリア",
       "sourceId": "shimamotor-acro-level-test",
       "trickNames": [
-        "ブリッジ30秒",
         "前回り受け身",
         "首抜き後転",
         "フロントスウィープ",
@@ -40,8 +39,6 @@
       "sourceId": "shimamotor-acro-level-test",
       "trickNames": [
         "キャタピー",
-        "チェアー30秒",
-        "片足しゃがみ立ち10秒",
         "ニューヨーク",
         "サルフット",
         "プッシュアップ",
@@ -237,7 +234,7 @@
       "note": "移動距離を伸ばす"
     },
     {
-      "from": "ブリッジ30秒",
+      "from": "立ちブリッジ",
       "to": "前方ブリッジ→起き上がり",
       "type": "prerequisite",
       "strength": 4,
@@ -496,14 +493,14 @@
       "note": "空中系アクロバット相関図を参考に追加"
     },
     {
-      "from": "ブリッジ30秒",
+      "from": "背倒立",
       "to": "跳ね起き",
       "type": "prerequisite",
       "strength": 3,
       "note": "空中系アクロバット相関図を参考に追加"
     },
     {
-      "from": "ブリッジ30秒",
+      "from": "後方ブリッジ",
       "to": "バク転",
       "type": "prerequisite",
       "strength": 3,
