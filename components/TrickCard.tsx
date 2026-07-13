@@ -3,7 +3,12 @@ import { ArrowUpRight, ShieldAlert, Waypoints } from "lucide-react";
 import type { Trick } from "@/lib/types";
 import { MetricDots } from "@/components/MetricDots";
 
-export function TrickCard({ trick }: { trick: Trick }) {
+export function TrickCard({ trick, returnHref }: { trick: Trick; returnHref?: string }) {
+  const detailHref =
+    returnHref && returnHref !== "/tricks"
+      ? { pathname: `/tricks/${trick.slug}` as `/tricks/${string}`, query: { from: returnHref } }
+      : (`/tricks/${trick.slug}` as `/tricks/${string}`);
+
   return (
     <article className="group flex h-full flex-col rounded border border-ink/10 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-pine/40 hover:shadow-soft">
       <div className="flex items-start justify-between gap-3">
@@ -16,7 +21,7 @@ export function TrickCard({ trick }: { trick: Trick }) {
           <h2 className="break-words text-lg font-bold leading-tight text-ink">{trick.name}</h2>
         </div>
         <Link
-          href={`/tricks/${trick.slug}`}
+          href={detailHref}
           className="grid size-9 shrink-0 place-items-center rounded border border-ink/10 text-pine transition group-hover:bg-pine group-hover:text-white"
           aria-label={`${trick.name}の詳細`}
         >

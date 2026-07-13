@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Activity, Compass, Filter, GitBranch, Map, Search, ShieldAlert, SlidersHorizontal, Waypoints, X } from "lucide-react";
 import type { Trick } from "@/lib/types";
 import { TrickCard } from "@/components/TrickCard";
@@ -38,6 +38,7 @@ export function TrickExplorer({ tricks, options }: Props) {
   const [risk, setRisk] = useState(allValue);
   const [tag, setTag] = useState(allValue);
   const [sort, setSort] = useState("level");
+  const [urlReady, setUrlReady] = useState(false);
 
   const filtered = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -165,6 +166,41 @@ export function TrickExplorer({ tricks, options }: Props) {
       tag !== allValue
   );
   const mapHref = makeMapHref({ query, discipline, family });
+  const explorerSearch = useMemo(
+    () => makeExplorerSearch({ query, discipline, family, axis, ropeContext, difficulty, risk, tag, sort }),
+    [axis, difficulty, discipline, family, query, risk, ropeContext, sort, tag]
+  );
+  const returnHref = explorerSearch ? `/tricks?${explorerSearch}` : "/tricks";
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const nextDiscipline = readOption(params, "discipline", options.disciplines);
+    const nextFamily = readOption(params, "family", options.families);
+    const nextAxis = readOption(params, "axis", options.axes);
+    const nextRopeContext = readOption(params, "rope", options.ropeContexts);
+    const nextDifficulty = readOption(params, "difficulty", ["1", "2", "3", "4", "5"]);
+    const nextRisk = readOption(params, "risk", ["1", "2", "3", "4", "5"]);
+    const nextTag = readOption(params, "tag", options.tags);
+    const nextSort = readOption(params, "sort", ["level", "difficulty", "risk", "name"], "level");
+
+    setQuery((params.get("q") ?? "").trim());
+    setDiscipline(nextDiscipline);
+    setFamily(nextFamily);
+    setAxis(nextAxis);
+    setRopeContext(nextRopeContext);
+    setDifficulty(nextDifficulty);
+    setRisk(nextRisk);
+    setTag(nextTag);
+    setSort(nextSort);
+    setUrlReady(true);
+  }, [options.axes, options.disciplines, options.families, options.ropeContexts, options.tags]);
+
+  useEffect(() => {
+    if (!urlReady) return;
+    const nextPath = explorerSearch ? `/tricks?${explorerSearch}` : "/tricks";
+    const currentPath = `${window.location.pathname}${window.location.search}`;
+    if (currentPath !== nextPath) window.history.replaceState(null, "", nextPath);
+  }, [explorerSearch, urlReady]);
 
   function resetFilters() {
     setQuery("");
@@ -349,7 +385,7 @@ export function TrickExplorer({ tricks, options }: Props) {
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {filtered.map((trick) => (
-          <TrickCard key={trick.id} trick={trick} />
+          <TrickCard key={trick.id} trick={trick} returnHref={returnHref} />
         ))}
       </div>
 
@@ -378,6 +414,47 @@ function makeMapHref({ query, discipline, family }: { query: string; discipline:
   if (discipline !== allValue) params.discipline = discipline;
   if (family !== allValue) params.family = family;
   return Object.keys(params).length ? { pathname: "/map", query: params } : { pathname: "/map" };
+}
+
+function makeExplorerSearch({
+  query,
+  discipline,
+  family,
+  axis,
+  ropeContext,
+  difficulty,
+  risk,
+  tag,
+  sort
+}: {
+  query: string;
+  discipline: string;
+  family: string;
+  axis: string;
+  ropeContext: string;
+  difficulty: string;
+  risk: string;
+  tag: string;
+  sort: string;
+}) {
+  const params = new URLSearchParams();
+  const normalizedQuery = query.trim();
+  if (normalizedQuery) params.set("q", normalizedQuery);
+  if (discipline !== allValue) params.set("discipline", discipline);
+  if (family !== allValue) params.set("family", family);
+  if (axis !== allValue) params.set("axis", axis);
+  if (ropeContext !== allValue) params.set("rope", ropeContext);
+  if (difficulty !== allValue) params.set("difficulty", difficulty);
+  if (risk !== allValue) params.set("risk", risk);
+  if (tag !== allValue) params.set("tag", tag);
+  if (sort !== "level") params.set("sort", sort);
+  return params.toString();
+}
+
+function readOption(params: URLSearchParams, key: string, values: string[], fallback = allValue) {
+  const value = params.get(key) ?? "";
+  if (!value) return fallback;
+  return values.includes(value) ? value : fallback;
 }
 
 function Select({

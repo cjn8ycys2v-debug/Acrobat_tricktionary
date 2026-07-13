@@ -13,8 +13,15 @@ export function generateStaticParams() {
   return allTricks.map((trick) => ({ slug: trick.slug }));
 }
 
-export default async function TrickDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function TrickDetailPage({
+  params,
+  searchParams
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ from?: string | string[] }>;
+}) {
   const { slug } = await params;
+  const { from } = await searchParams;
   const atlas = await getPublicAtlasContent();
   const trick = atlas.tricks.find((candidate) => candidate.slug === slug);
   if (!trick) notFound();
@@ -24,10 +31,11 @@ export default async function TrickDetailPage({ params }: { params: Promise<{ sl
   const mediaAssets = atlas.mediaAssets.filter((asset) => asset.trickId === trick.id && asset.type === "video");
   const primaryVideo = mediaAssets.find((asset) => asset.storagePath.trim() && asset.consentChecked);
   const source = trick.showSource ? atlas.sources.find((item) => item.id === trick.sourceId) : undefined;
+  const returnHref = safeTricksReturnHref(from);
 
   return (
     <main className="mx-auto max-w-7xl px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
-      <Link href="/tricks" className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-pine hover:text-coral">
+      <Link href={returnHref} className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-pine hover:text-coral">
         <ArrowLeft aria-hidden className="size-4" />
         技図鑑に戻る
       </Link>
@@ -131,6 +139,20 @@ export default async function TrickDetailPage({ params }: { params: Promise<{ sl
       </div>
     </main>
   );
+}
+
+function safeTricksReturnHref(value: string | string[] | undefined) {
+  const candidate = Array.isArray(value) ? value[0] : value;
+  if (!candidate) return "/tricks";
+
+  try {
+    const parsed = new URL(candidate, "https://atlas.local");
+    if (parsed.origin !== "https://atlas.local" || parsed.pathname !== "/tricks") return "/tricks";
+    const query = Object.fromEntries(parsed.searchParams.entries());
+    return Object.keys(query).length ? { pathname: "/tricks" as const, query } : "/tricks";
+  } catch {
+    return "/tricks";
+  }
 }
 
 function KnowledgeReviewBadge({ trick }: { trick: Trick }) {
