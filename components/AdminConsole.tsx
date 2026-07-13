@@ -1,7 +1,25 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { CheckCircle2, Clock, Database, ExternalLink, FileVideo, GitBranch, Layers, LinkIcon, Lock, Plus, Save, Search, Trash2, Upload, type LucideIcon } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  BookOpenText,
+  CheckCircle2,
+  Clock,
+  Database,
+  ExternalLink,
+  FileVideo,
+  GitBranch,
+  Layers,
+  LinkIcon,
+  Lock,
+  Plus,
+  Save,
+  Search,
+  ShieldAlert,
+  Trash2,
+  Upload,
+  type LucideIcon
+} from "lucide-react";
 import { AdminMapEditor } from "@/components/AdminMapEditor";
 import { RelationBulkEditor } from "@/components/RelationBulkEditor";
 import { formatReferenceRange, isLikelyDirectVideoPath, timedReferenceUrl, videoSrc, youtubeEmbedSrc } from "@/lib/media";
@@ -19,7 +37,24 @@ type Props = {
   prototypeMode: boolean;
 };
 
-type AdminSection = "tricks" | "videos" | "relations" | "layout" | "status";
+type AdminSection = "tricks" | "knowledge" | "videos" | "relations" | "layout" | "status";
+
+type KnowledgePatch = Partial<
+  Pick<
+    Trick,
+    | "summary"
+    | "description"
+    | "originNote"
+    | "practiceSteps"
+    | "commonMistakes"
+    | "safetyNotes"
+    | "coachComment"
+    | "knowledgeStatus"
+    | "knowledgeReviewedBy"
+    | "knowledgeSourceUrls"
+    | "showKnowledgeSources"
+  >
+>;
 
 export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAssets, sources, prototypeMode }: Props) {
   const [drafts, setDrafts] = useState(tricks);
@@ -27,8 +62,10 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
   const [mediaDrafts, setMediaDrafts] = useState(mediaAssets);
   const [selectedId, setSelectedId] = useState(drafts[0]?.id ?? "");
   const [activeSection, setActiveSection] = useState<AdminSection>("tricks");
+  const [knowledgeChangedIds, setKnowledgeChangedIds] = useState<Set<string>>(() => new Set());
   const [videoMessage, setVideoMessage] = useState("動画ファイルを選ぶと、種別・サイズ・同意チェックの検証を行います。");
   const [saveMessage, setSaveMessage] = useState("技名、別名、基礎技、応用技、説明、挿入動画をまとめて編集できます。");
+  const [knowledgeMessage, setKnowledgeMessage] = useState("由来、説明、練習ステップ、安全注意を横断で監修できます。");
   const [relationMessage, setRelationMessage] = useState("登録済みの技から複数選択できます。選択すると相関図の線にも反映されます。");
 
   const selected = useMemo(() => drafts.find((trick) => trick.id === selectedId) ?? drafts[0], [drafts, selectedId]);
@@ -54,6 +91,12 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
   function updateSelected<K extends keyof Trick>(field: K, value: Trick[K]) {
     if (!selected) return;
     setDrafts((current) => current.map((trick) => (trick.id === selected.id ? { ...trick, [field]: value } : trick)));
+  }
+
+  function updateKnowledgeDraft(id: string, patch: KnowledgePatch) {
+    setDrafts((current) => current.map((trick) => (trick.id === id ? { ...trick, ...patch } : trick)));
+    setKnowledgeChangedIds((current) => new Set(current).add(id));
+    setKnowledgeMessage("未保存の知識メモがあります。必要な分だけDB保存してください。");
   }
 
   function makeDraftTrick(): Trick {
@@ -205,7 +248,55 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
       })
     });
     const mediaResult = await mediaResponse.json();
+    if (mediaResponse.ok) {
+      setKnowledgeChangedIds((current) => {
+        const next = new Set(current);
+        next.delete(selected.id);
+        return next;
+      });
+    }
     setSaveMessage(mediaResponse.ok ? "技データ、相関、挿入動画を保存しました。" : `動画パスの保存に失敗しました: ${mediaResult.error ?? "unknown error"}`);
+  }
+
+  async function saveAllKnowledge() {
+    const changedIds = Array.from(knowledgeChangedIds).filter((id) => trickById.has(id));
+    if (!changedIds.length) {
+      setKnowledgeMessage("保存待ちの知識メモはありません。");
+      return;
+    }
+
+    if (prototypeMode) {
+      setKnowledgeChangedIds(new Set());
+      setKnowledgeMessage(`プロトタイプでは${changedIds.length}技分の知識メモをブラウザ内stateに反映しました。Supabase接続後はDBへ保存します。`);
+      return;
+    }
+
+    let saved = 0;
+    for (const id of changedIds) {
+      const trick = trickById.get(id);
+      if (!trick) continue;
+
+      const response = await fetch("/api/admin/tricks", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          id: trick.id,
+          ...knowledgePayload(trick)
+        })
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setKnowledgeMessage(`${trick.name} の知識メモ保存に失敗しました: ${result.error ?? "unknown error"}`);
+        return;
+      }
+      saved += 1;
+    }
+
+    setKnowledgeChangedIds((current) => {
+      const savedSet = new Set(changedIds);
+      return new Set(Array.from(current).filter((id) => !savedSet.has(id)));
+    });
+    setKnowledgeMessage(`知識メモをDBへ保存しました: ${saved}技`);
   }
 
   async function saveAllVideos() {
@@ -566,6 +657,20 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
             </section>
           ) : null}
 
+          {activeSection === "knowledge" ? (
+            <KnowledgeBulkEditor
+              tricks={drafts}
+              changedIds={knowledgeChangedIds}
+              message={knowledgeMessage}
+              onUpdate={updateKnowledgeDraft}
+              onSave={saveAllKnowledge}
+              onOpenTrick={(id) => {
+                setSelectedId(id);
+                setActiveSection("tricks");
+              }}
+            />
+          ) : null}
+
           {activeSection === "videos" ? (
             <VideoBulkEditor
               tricks={drafts}
@@ -619,6 +724,7 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
 function AdminSectionTabs({ activeSection, onChange }: { activeSection: AdminSection; onChange: (section: AdminSection) => void }) {
   const sections: Array<{ id: AdminSection; label: string; description: string }> = [
     { id: "tricks", label: "技を編集", description: "名前・説明・動画" },
+    { id: "knowledge", label: "知識台帳", description: "由来・安全・監修" },
     { id: "videos", label: "動画台帳", description: "参考URL・公開URL" },
     { id: "relations", label: "繋がり", description: "相関の一覧・一括指定" },
     { id: "layout", label: "配置", description: "公式スキルツリー" },
@@ -626,7 +732,7 @@ function AdminSectionTabs({ activeSection, onChange }: { activeSection: AdminSec
   ];
 
   return (
-    <div className="mb-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+    <div className="mb-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-6">
       {sections.map((section) => {
         const isActive = activeSection === section.id;
         return (
@@ -920,6 +1026,251 @@ function RelationPreview({ relations, tricks, selectedId }: { relations: TrickRe
         : "登録された相関はまだありません。"}
     </div>
   );
+}
+
+function KnowledgeBulkEditor({
+  tricks,
+  changedIds,
+  message,
+  onUpdate,
+  onSave,
+  onOpenTrick
+}: {
+  tricks: Trick[];
+  changedIds: Set<string>;
+  message: string;
+  onUpdate: (id: string, patch: KnowledgePatch) => void;
+  onSave: () => void;
+  onOpenTrick: (id: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [stateFilter, setStateFilter] = useState("all");
+  const [visibleLimit, setVisibleLimit] = useState(24);
+
+  const stats = useMemo(
+    () => ({
+      draft: tricks.filter((trick) => trick.knowledgeStatus === "draft").length,
+      reviewing: tricks.filter((trick) => trick.knowledgeStatus === "reviewing").length,
+      reviewed: tricks.filter((trick) => trick.knowledgeStatus === "reviewed").length,
+      needsOrigin: tricks.filter(needsOriginReview).length,
+      needsSafety: tricks.filter(needsSafetyReview).length,
+      changed: changedIds.size
+    }),
+    [changedIds, tricks]
+  );
+
+  const visibleTricks = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    return tricks
+      .filter((trick) => {
+        const matchesQuery = !normalized || knowledgeSearchText(trick).includes(normalized);
+        const matchesFilter =
+          stateFilter === "all" ||
+          trick.knowledgeStatus === stateFilter ||
+          (stateFilter === "needsOrigin" && needsOriginReview(trick)) ||
+          (stateFilter === "needsSafety" && needsSafetyReview(trick)) ||
+          (stateFilter === "changed" && changedIds.has(trick.id));
+        return matchesQuery && matchesFilter;
+      })
+      .sort((a, b) => a.level - b.level || a.name.localeCompare(b.name, "ja"));
+  }, [changedIds, query, stateFilter, tricks]);
+  const shownTricks = visibleTricks.slice(0, visibleLimit);
+
+  useEffect(() => {
+    setVisibleLimit(24);
+  }, [query, stateFilter]);
+
+  return (
+    <section className="rounded border border-ink/10 bg-white p-4 shadow-sm sm:p-5">
+      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <h2 className="flex items-center gap-2 text-sm font-black text-ink">
+            <BookOpenText aria-hidden className="size-4 text-pine" />
+            知識台帳
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-graphite/76">
+            由来、説明文、練習ステップ、安全注意、監修状態を横断で見直します。公開ページに出す前の下書き管理にも使えます。
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={!changedIds.size}
+          className={`inline-flex h-10 w-full items-center justify-center gap-2 rounded px-4 text-sm font-black text-white transition sm:w-auto ${
+            changedIds.size ? "bg-pine hover:bg-ink" : "cursor-not-allowed bg-graphite/35"
+          }`}
+        >
+          <Save aria-hidden className="size-4" />
+          変更分をDB保存
+        </button>
+      </div>
+
+      <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        <KnowledgeStat label="下書き" value={stats.draft} />
+        <KnowledgeStat label="監修中" value={stats.reviewing} />
+        <KnowledgeStat label="監修済み" value={stats.reviewed} />
+        <KnowledgeStat label="由来要補強" value={stats.needsOrigin} />
+        <KnowledgeStat label="安全要補強" value={stats.needsSafety} />
+        <KnowledgeStat label="未保存" value={stats.changed} />
+      </div>
+
+      <p className="mb-3 rounded bg-paper px-3 py-2 text-xs font-semibold text-graphite/72">{message}</p>
+
+      <div className="mb-4 grid gap-2 md:grid-cols-[1fr_220px]">
+        <label className="flex h-10 min-w-0 items-center gap-2 rounded border border-ink/12 bg-paper px-3 text-sm focus-within:border-pine">
+          <Search aria-hidden className="size-4 shrink-0 text-graphite/42" />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="技名・分類・由来・安全メモで検索"
+            className="h-full min-w-0 flex-1 bg-transparent outline-none"
+          />
+        </label>
+        <select
+          value={stateFilter}
+          onChange={(event) => setStateFilter(event.target.value)}
+          className="h-10 rounded border border-ink/14 bg-paper px-3 text-sm font-bold outline-none focus:border-pine"
+        >
+          <option value="all">全状態</option>
+          <option value="draft">下書き</option>
+          <option value="reviewing">監修中</option>
+          <option value="reviewed">監修済み</option>
+          <option value="needsOrigin">由来要補強</option>
+          <option value="needsSafety">安全要補強</option>
+          <option value="changed">未保存のみ</option>
+        </select>
+      </div>
+
+      <p className="mb-3 text-xs font-black text-graphite/62">
+        表示中: {shownTricks.length} / {visibleTricks.length} 技
+      </p>
+
+      <div className="grid gap-3">
+        {shownTricks.length ? (
+          shownTricks.map((trick) => {
+            const changed = changedIds.has(trick.id);
+            return (
+              <section
+                key={trick.id}
+                className={`rounded border p-3 transition sm:p-4 ${changed ? "border-coral/45 bg-coral/5" : "border-ink/10 bg-paper"}`}
+              >
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div className="min-w-0">
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                      <KnowledgeStatusBadge status={trick.knowledgeStatus} />
+                      {changed ? <span className="rounded bg-coral px-2 py-1 text-[11px] font-black text-white">未保存</span> : null}
+                      {needsOriginReview(trick) ? (
+                        <span className="inline-flex items-center gap-1 rounded bg-saffron/18 px-2 py-1 text-[11px] font-black text-graphite">
+                          <BookOpenText aria-hidden className="size-3" />
+                          由来要補強
+                        </span>
+                      ) : null}
+                      {needsSafetyReview(trick) ? (
+                        <span className="inline-flex items-center gap-1 rounded bg-coral/10 px-2 py-1 text-[11px] font-black text-coral">
+                          <ShieldAlert aria-hidden className="size-3" />
+                          安全要補強
+                        </span>
+                      ) : null}
+                    </div>
+                    <h3 className="break-words text-lg font-black text-ink">{trick.name}</h3>
+                    <p className="mt-1 text-xs font-semibold leading-5 text-graphite/62">
+                      Lv.{trick.level || "-"} / {trick.discipline} / {trick.family}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onOpenTrick(trick.id)}
+                    className="inline-flex h-9 w-full items-center justify-center rounded border border-ink/14 bg-white px-3 text-xs font-black text-graphite transition hover:border-pine hover:text-pine md:w-auto"
+                  >
+                    個別編集へ
+                  </button>
+                </div>
+
+                <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                  <div className="grid gap-3">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <KnowledgeStatusField value={trick.knowledgeStatus} onChange={(value) => onUpdate(trick.id, { knowledgeStatus: value })} />
+                      <Field
+                        label="監修者 / 監修チーム"
+                        value={trick.knowledgeReviewedBy}
+                        onChange={(value) => onUpdate(trick.id, { knowledgeReviewedBy: value })}
+                      />
+                    </div>
+                    <Field label="要約" value={trick.summary} onChange={(value) => onUpdate(trick.id, { summary: value })} />
+                    <LongTextField label="発祥・由来" value={trick.originNote} onChange={(value) => onUpdate(trick.id, { originNote: value })} />
+                    <TextListField label="安全注意" values={trick.safetyNotes} onChange={(value) => onUpdate(trick.id, { safetyNotes: value })} />
+                  </div>
+
+                  <details className="rounded border border-ink/10 bg-white p-3">
+                    <summary className="cursor-pointer rounded bg-paper px-3 py-2 text-sm font-black text-pine">
+                      説明・練習メモも編集
+                    </summary>
+                    <div className="mt-3 grid gap-3">
+                      <LongTextField label="説明文" value={trick.description} onChange={(value) => onUpdate(trick.id, { description: value })} />
+                      <TextListField label="練習ステップ" values={trick.practiceSteps} onChange={(value) => onUpdate(trick.id, { practiceSteps: value })} />
+                      <TextListField label="よくある失敗" values={trick.commonMistakes} onChange={(value) => onUpdate(trick.id, { commonMistakes: value })} />
+                      <LongTextField label="監修者コメント" value={trick.coachComment} onChange={(value) => onUpdate(trick.id, { coachComment: value })} />
+                      <TextListField
+                        label="参考リンク"
+                        values={trick.knowledgeSourceUrls}
+                        onChange={(value) => onUpdate(trick.id, { knowledgeSourceUrls: value })}
+                      />
+                      <label className="flex items-center gap-2 text-sm font-bold text-graphite">
+                        <input
+                          type="checkbox"
+                          checked={trick.showKnowledgeSources}
+                          onChange={(event) => onUpdate(trick.id, { showKnowledgeSources: event.target.checked })}
+                          className="size-4 accent-pine"
+                        />
+                        参考リンクを公開ページに表示する
+                      </label>
+                    </div>
+                  </details>
+                </div>
+              </section>
+            );
+          })
+        ) : (
+          <p className="rounded border border-dashed border-ink/20 bg-paper p-5 text-center text-sm font-semibold text-graphite/70">
+            条件に合う技がありません。
+          </p>
+        )}
+        {visibleTricks.length > shownTricks.length ? (
+          <button
+            type="button"
+            onClick={() => setVisibleLimit((current) => current + 24)}
+            className="inline-flex h-10 items-center justify-center rounded border border-pine px-3 text-sm font-black text-pine transition hover:bg-pine hover:text-white"
+          >
+            さらに24件表示
+          </button>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function KnowledgeStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded border border-ink/10 bg-paper px-2 py-2 text-center">
+      <p className="text-[10px] font-black text-graphite/58">{label}</p>
+      <p className="mt-1 text-lg font-black text-ink">{value}</p>
+    </div>
+  );
+}
+
+function KnowledgeStatusBadge({ status }: { status: Trick["knowledgeStatus"] }) {
+  const style = {
+    draft: "bg-paper text-graphite border-ink/10",
+    reviewing: "bg-saffron/18 text-graphite border-saffron/40",
+    reviewed: "bg-skywash text-pine border-pine/25"
+  }[status];
+  const label = {
+    draft: "下書き",
+    reviewing: "監修中",
+    reviewed: "監修済み"
+  }[status];
+
+  return <span className={`rounded border px-2 py-1 text-[11px] font-black ${style}`}>{label}</span>;
 }
 
 function VideoBulkEditor({
@@ -1415,6 +1766,55 @@ function mediaPayload(asset: MediaAsset) {
     credit: asset.credit,
     consentChecked: asset.consentChecked
   };
+}
+
+function knowledgePayload(trick: Trick) {
+  return {
+    summary: trick.summary,
+    description: trick.description,
+    originNote: trick.originNote,
+    practiceSteps: trick.practiceSteps,
+    commonMistakes: trick.commonMistakes,
+    safetyNotes: trick.safetyNotes,
+    coachComment: trick.coachComment,
+    knowledgeStatus: trick.knowledgeStatus,
+    knowledgeReviewedBy: trick.knowledgeReviewedBy,
+    knowledgeSourceUrls: trick.knowledgeSourceUrls,
+    showKnowledgeSources: trick.showKnowledgeSources
+  };
+}
+
+function needsOriginReview(trick: Trick) {
+  const note = trick.originNote.trim();
+  return !note || note.includes("監修後") || note.includes("調査中") || note.length < 24;
+}
+
+function needsSafetyReview(trick: Trick) {
+  return !trick.safetyNotes.length || trick.safetyNotes.join("").length < 20;
+}
+
+function knowledgeSearchText(trick: Trick) {
+  return [
+    trick.name,
+    ...trick.aliases,
+    trick.summary,
+    trick.description,
+    trick.originNote,
+    ...trick.practiceSteps,
+    ...trick.commonMistakes,
+    ...trick.safetyNotes,
+    trick.coachComment,
+    trick.knowledgeReviewedBy,
+    ...trick.knowledgeSourceUrls,
+    trick.discipline,
+    trick.family,
+    trick.axis,
+    trick.ropeContext,
+    trick.levelCategory,
+    ...trick.tags
+  ]
+    .join(" ")
+    .toLowerCase();
 }
 
 function exportVideoRows(mediaAssets: MediaAsset[], trickById: Map<string, Trick>) {
