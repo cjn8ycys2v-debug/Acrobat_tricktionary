@@ -4,16 +4,24 @@ import { getSupabaseConfig } from "@/lib/supabase/config";
 export type AdminAccessState =
   | { mode: "prototype"; isAdmin: true; reason: "supabase-not-configured" }
   | { mode: "supabase"; isAdmin: true; userId: string }
-  | { mode: "supabase"; isAdmin: false; reason: "not-signed-in" | "not-admin" };
+  | { mode: "supabase"; isAdmin: false; reason: "not-signed-in" | "not-admin" | "supabase-not-configured" };
 
 export async function getAdminAccessState(): Promise<AdminAccessState> {
   const config = getSupabaseConfig();
   if (!config.isConfigured) {
+    if (!isPrototypeAdminEnabled()) {
+      return { mode: "supabase", isAdmin: false, reason: "supabase-not-configured" };
+    }
     return { mode: "prototype", isAdmin: true, reason: "supabase-not-configured" };
   }
 
   const supabase = await createSupabaseServerClient();
-  if (!supabase) return { mode: "prototype", isAdmin: true, reason: "supabase-not-configured" };
+  if (!supabase) {
+    if (!isPrototypeAdminEnabled()) {
+      return { mode: "supabase", isAdmin: false, reason: "supabase-not-configured" };
+    }
+    return { mode: "prototype", isAdmin: true, reason: "supabase-not-configured" };
+  }
 
   const {
     data: { user }
@@ -29,4 +37,8 @@ export async function getAdminAccessState(): Promise<AdminAccessState> {
   }
 
   return { mode: "supabase", isAdmin: true, userId: user.id };
+}
+
+function isPrototypeAdminEnabled() {
+  return process.env.NODE_ENV !== "production" || process.env.ALLOW_PROTOTYPE_ADMIN === "true";
 }

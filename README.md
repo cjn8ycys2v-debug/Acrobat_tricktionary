@@ -25,6 +25,8 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
+# 本番でSupabase未設定のまま/adminを開く場合だけtrue。通常は空のままにする。
+ALLOW_PROTOTYPE_ADMIN=
 ```
 
 DBスキーマは `supabase/migrations/001_initial_schema.sql` にあります。初期実装は環境変数がない場合でも、`data/atlas-data.json` のローカルseedデータで動くようにしています。
@@ -48,3 +50,9 @@ npm run validate:data
 - `/levels`: PDF由来のレベルテスト表
 - `/map`: 前提・派生の相関マップ
 - `/admin`: 技データ、動画、タグ、分類、相関、レベル表の管理入口
+
+## Deployment Notes
+
+公開環境でSupabaseが未設定の場合、図鑑・レベル表・相関マップはseedデータで表示されますが、`/admin` は閉じます。管理画面を本番で使う場合はSupabase Authと`profiles.role = admin`を設定してください。
+
+ローカル開発ではSupabase未設定でもプロトタイプ管理画面を使えます。本番で例外的にプロトタイプ管理を開く場合だけ、`ALLOW_PROTOTYPE_ADMIN=true` を設定します。
