@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { parseTimecodeToSeconds } from "@/lib/media";
 import { getAdminAccessState } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { MediaAsset } from "@/lib/types";
@@ -162,8 +163,5 @@ function normalizeMediaAssets(value: unknown[]): MediaInput[] {
 }
 
 function normalizeOptionalSecond(value: unknown) {
-  if (value === "" || value === null || value === undefined) return undefined;
-  const numberValue = Number(value);
-  if (!Number.isFinite(numberValue)) return undefined;
-  return Math.max(0, Math.round(numberValue));
+  return parseTimecodeToSeconds(typeof value === "string" || typeof value === "number" ? value : undefined);
 }

@@ -5,6 +5,7 @@ import {
   BookOpenText,
   CheckCircle2,
   Clock,
+  Copy,
   Database,
   ExternalLink,
   FileVideo,
@@ -22,7 +23,7 @@ import {
 } from "lucide-react";
 import { AdminMapEditor } from "@/components/AdminMapEditor";
 import { RelationBulkEditor } from "@/components/RelationBulkEditor";
-import { formatReferenceRange, isLikelyDirectVideoPath, timedReferenceUrl, videoSrc, youtubeEmbedSrc } from "@/lib/media";
+import { formatReferenceRange, formatSeconds, isLikelyDirectVideoPath, parseTimecodeToSeconds, timedReferenceUrl, videoSrc, youtubeEmbedSrc } from "@/lib/media";
 import type { LevelTest, MediaAsset, Source, Trick, TrickMapPosition, TrickRelation } from "@/lib/types";
 import type { ReactNode } from "react";
 import { relationLabel } from "@/lib/utils";
@@ -646,9 +647,11 @@ export function AdminConsole({ tricks, levels, relations, mapPositions, mediaAss
                   <Panel icon={FileVideo} title="挿入動画">
                     <VideoReferenceEditor
                       videos={selectedVideos}
+                      trick={selected}
                       onAdd={addVideoDraft}
                       onUpdate={updateVideoDraft}
                       onRemove={removeVideoDraft}
+                      onMessage={setVideoMessage}
                     />
                     <VideoUpload onValidate={handleVideo} message={videoMessage} />
                   </Panel>
@@ -1354,6 +1357,21 @@ function VideoBulkEditor({
     onMessage("動画候補を削除しました。保存するとDBへ反映します。");
   }
 
+  async function copyVideoMemo(asset: MediaAsset, trick?: Trick) {
+    const text = makeVideoWorkMemo(asset, trick);
+    if (!text) {
+      onMessage("コピーできる動画メモがありません。");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      onMessage(`${trick?.name ?? "動画候補"} の再アップ用メモをコピーしました。`);
+    } catch {
+      onMessage("ブラウザの権限でコピーできませんでした。テキスト欄から手動でコピーしてください。");
+    }
+  }
+
   return (
     <section className="rounded border border-ink/10 bg-white p-4 shadow-sm sm:p-5">
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -1430,6 +1448,14 @@ function VideoBulkEditor({
                       {state.kind === "ready" ? <CheckCircle2 aria-hidden className="size-3.5" /> : <Clock aria-hidden className="size-3.5" />}
                       {state.label}
                     </span>
+                    <button
+                      type="button"
+                      onClick={() => copyVideoMemo(asset, trick)}
+                      className="ml-2 inline-flex min-h-7 items-center gap-1 rounded border border-ink/10 bg-paper px-2 py-1 text-[11px] font-black text-graphite transition hover:border-pine hover:text-pine"
+                    >
+                      <Copy aria-hidden className="size-3.5" />
+                      作業メモ
+                    </button>
                     <div className="mt-2 grid gap-1.5 text-xs leading-5 text-graphite/72">
                       {asset.storagePath ? <p className="break-all font-bold text-ink">公開: {asset.storagePath}</p> : null}
                       {reference ? (
@@ -1488,14 +1514,18 @@ function VideoBulkEditor({
 
 function VideoReferenceEditor({
   videos,
+  trick,
   onAdd,
   onUpdate,
-  onRemove
+  onRemove,
+  onMessage
 }: {
   videos: MediaAsset[];
+  trick?: Trick;
   onAdd: () => void;
   onUpdate: (id: string, patch: Partial<MediaAsset>) => void;
   onRemove: (id: string) => void;
+  onMessage: (message: string) => void;
 }) {
   const videoStats = useMemo(
     () => ({
@@ -1505,6 +1535,21 @@ function VideoReferenceEditor({
     }),
     [videos]
   );
+
+  async function copyVideoMemo(asset: MediaAsset) {
+    const text = makeVideoWorkMemo(asset, trick);
+    if (!text) {
+      onMessage("コピーできる動画メモがありません。");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      onMessage(`${trick?.name ?? "動画候補"} の再アップ用メモをコピーしました。`);
+    } catch {
+      onMessage("ブラウザの権限でコピーできませんでした。動画台帳のテキストから手動でコピーしてください。");
+    }
+  }
 
   return (
     <div className="grid gap-3">
@@ -1578,6 +1623,14 @@ function VideoReferenceEditor({
                       参考区間を開く{range ? ` / ${range}` : ""}
                     </a>
                   ) : null}
+                  <button
+                    type="button"
+                    onClick={() => copyVideoMemo(asset)}
+                    className="inline-flex min-h-9 items-center gap-2 rounded border border-ink/10 bg-white px-3 py-2 text-xs font-black text-graphite transition hover:border-pine hover:text-pine"
+                  >
+                    <Copy aria-hidden className="size-4 shrink-0" />
+                    再アップ用メモをコピー
+                  </button>
                   <Field
                     label="権利・許諾メモ"
                     value={asset.rightsNote ?? ""}
@@ -1697,17 +1750,68 @@ function videoWorkflowState(asset: MediaAsset) {
   };
 }
 
+function makeVideoWorkMemo(asset: MediaAsset, trick?: Trick) {
+  const reference = timedReferenceUrl(asset) || asset.referenceUrl?.trim() || "";
+  const range = formatReferenceRange(asset) || "未指定";
+  const publicUrl = asset.storagePath.trim() || "未登録";
+  const state = videoWorkflowState(asset).label;
+
+  if (!reference && publicUrl === "未登録") return "";
+
+  return [
+    `技名: ${trick?.name ?? asset.trickId}`,
+    `状態: ${state}`,
+    `参考区間: ${range}`,
+    `参考URL: ${reference || "未指定"}`,
+    `再アップ後の公開用URL: ${publicUrl}`,
+    asset.credit ? `クレジット: ${asset.credit}` : "",
+    asset.rightsNote ? `権利・許諾メモ: ${asset.rightsNote}` : ""
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
 function OptionalSecondField({ label, value, onChange }: { label: string; value?: number; onChange: (value: number | undefined) => void }) {
+  const [draft, setDraft] = useState(value === undefined ? "" : formatSeconds(value));
+
+  useEffect(() => {
+    setDraft(value === undefined ? "" : formatSeconds(value));
+  }, [value]);
+
+  const parsed = draft.trim() ? parseTimecodeToSeconds(draft) : undefined;
+  const isInvalid = Boolean(draft.trim()) && parsed === undefined;
+
+  function updateDraft(next: string) {
+    setDraft(next);
+    if (!next.trim()) {
+      onChange(undefined);
+      return;
+    }
+
+    const nextSeconds = parseTimecodeToSeconds(next);
+    if (nextSeconds !== undefined) onChange(nextSeconds);
+  }
+
   return (
     <label>
       <span className="mb-2 block text-sm font-bold text-ink">{label}</span>
       <input
-        min={0}
-        type="number"
-        value={value ?? ""}
-        onChange={(event) => onChange(event.target.value === "" ? undefined : Math.max(0, Math.round(Number(event.target.value))))}
-        className="h-11 w-full rounded border border-ink/14 bg-white px-3 text-sm outline-none focus:border-pine"
+        type="text"
+        value={draft}
+        inputMode="numeric"
+        placeholder="83 / 1:23 / 1m23s"
+        onChange={(event) => updateDraft(event.target.value)}
+        onBlur={() => {
+          if (value !== undefined) setDraft(formatSeconds(value));
+          else if (isInvalid) setDraft("");
+        }}
+        className={`h-11 w-full rounded border bg-white px-3 text-sm outline-none focus:border-pine ${
+          isInvalid ? "border-coral" : "border-ink/14"
+        }`}
       />
+      <span className={`mt-1 block text-[11px] font-semibold ${isInvalid ? "text-coral" : "text-graphite/58"}`}>
+        秒数、分:秒、1m23s、1分23秒で入力できます。
+      </span>
     </label>
   );
 }
@@ -1839,7 +1943,7 @@ function exportVideoRows(mediaAssets: MediaAsset[], trickById: Map<string, Trick
       ].join(" | ");
     });
 
-  return ["# 技名 | 参考URL | 開始秒 | 終了秒 | 公開用URL | 公開OK | クレジット | 権利メモ", ...rows].join("\n");
+  return ["# 技名 | 参考URL | 開始秒 | 終了秒 | 公開用URL | 公開OK | クレジット | 権利メモ", "# 秒数は 83 / 1:23 / 1m23s / 1分23秒 で入力できます", ...rows].join("\n");
 }
 
 function parseVideoRows(text: string, tricks: Trick[], currentMediaAssets: MediaAsset[]) {
@@ -1906,10 +2010,7 @@ function videoRowKey(trickId: string, storagePath: string, referenceUrl: string,
 }
 
 function parseOptionalSecond(value: string | undefined) {
-  if (!value) return undefined;
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return undefined;
-  return Math.max(0, Math.round(numeric));
+  return parseTimecodeToSeconds(value);
 }
 
 function normalizeReferenceEnd(start: number | undefined, end: number | undefined) {
