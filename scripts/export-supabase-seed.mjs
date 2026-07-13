@@ -29,6 +29,23 @@ const riskByLevel = new Map([
   [10, 5]
 ]);
 
+const explicitAliases = {
+  側転: ["カートホイール", "cartwheel"],
+  ロンダート: ["ラウンドオフ", "roundoff", "round-off"],
+  バク転: ["バック転", "バックハンドスプリング", "back handspring"],
+  ハンドスプリング: ["前方転回", "front handspring"],
+  前宙: ["前方宙返り", "front flip"],
+  バク宙: ["バック宙", "後方宙返り", "back flip"],
+  ロン宙: ["ロンダート宙返り", "roundoff back tuck"],
+  エアリアル: ["aerial"],
+  バタフライツイスト: ["B-twist", "btwist"],
+  コークスクリュー: ["corkscrew", "cork"],
+  ウインドミル: ["windmill"],
+  トーマス: ["トーマスフレア", "flare"],
+  マカコ: ["macaco"],
+  ヘリコプテイロ: ["helicoptero"]
+};
+
 const disciplineGuides = {
   ダブルダッチ: {
     roots: "ロープを跳ぶ競技・パフォーマンスの文脈で発展した動きが中心です。技そのものより、入る位置、抜ける位置、リズムを崩さないことが名前や価値に直結します。",
@@ -119,6 +136,7 @@ function sql(value) {
 }
 
 function array(values) {
+  if (!values.length) return "array[]::text[]";
   return `array[${values.map(sql).join(", ")}]`;
 }
 
@@ -278,7 +296,7 @@ for (const level of data.levels) {
           sql(id),
           sql(slugFor(historicIndex, name)),
           sql(name),
-          "array[]::text[]",
+          array(explicitAliases[name] ?? []),
           sql(`${disc} / ${fam}の${levelRole(level.level)}技。${practiceFocus}`),
           sql(
             `${name}は、${disc}の要素を持つ${fam}系の技です。${familyConcept(fam)}レベル${level.level}「${level.category}」では「${level.passCondition}」が目安です。${practiceFocus} ${disciplineBridge(
@@ -309,7 +327,7 @@ for (const level of data.levels) {
           sql(sourceUuid),
           "false"
         ].join(", ") +
-        ") on conflict (slug) do update set summary = excluded.summary, description = excluded.description, origin_note = excluded.origin_note, practice_steps = excluded.practice_steps, common_mistakes = excluded.common_mistakes, safety_notes = excluded.safety_notes, coach_comment = excluded.coach_comment, difficulty = excluded.difficulty, risk_level = excluded.risk_level, discipline = excluded.discipline, family = excluded.family, axis = excluded.axis, takeoff = excluded.takeoff, landing = excluded.landing, rope_context = excluded.rope_context, tags = excluded.tags, level = excluded.level, level_category = excluded.level_category, status = excluded.status, source_id = excluded.source_id;"
+        ") on conflict (slug) do update set aliases = excluded.aliases, summary = excluded.summary, description = excluded.description, origin_note = excluded.origin_note, practice_steps = excluded.practice_steps, common_mistakes = excluded.common_mistakes, safety_notes = excluded.safety_notes, coach_comment = excluded.coach_comment, difficulty = excluded.difficulty, risk_level = excluded.risk_level, discipline = excluded.discipline, family = excluded.family, axis = excluded.axis, takeoff = excluded.takeoff, landing = excluded.landing, rope_context = excluded.rope_context, tags = excluded.tags, level = excluded.level, level_category = excluded.level_category, status = excluded.status, source_id = excluded.source_id;"
     );
     visibleTrickIndex += 1;
   }

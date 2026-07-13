@@ -43,6 +43,7 @@ type AdminSection = "tricks" | "knowledge" | "videos" | "relations" | "layout" |
 type KnowledgePatch = Partial<
   Pick<
     Trick,
+    | "aliases"
     | "summary"
     | "description"
     | "originNote"
@@ -1055,6 +1056,7 @@ function KnowledgeBulkEditor({
       draft: tricks.filter((trick) => trick.knowledgeStatus === "draft").length,
       reviewing: tricks.filter((trick) => trick.knowledgeStatus === "reviewing").length,
       reviewed: tricks.filter((trick) => trick.knowledgeStatus === "reviewed").length,
+      needsAliases: tricks.filter(needsAliasReview).length,
       needsOrigin: tricks.filter(needsOriginReview).length,
       needsSafety: tricks.filter(needsSafetyReview).length,
       changed: changedIds.size
@@ -1070,6 +1072,7 @@ function KnowledgeBulkEditor({
         const matchesFilter =
           stateFilter === "all" ||
           trick.knowledgeStatus === stateFilter ||
+          (stateFilter === "needsAliases" && needsAliasReview(trick)) ||
           (stateFilter === "needsOrigin" && needsOriginReview(trick)) ||
           (stateFilter === "needsSafety" && needsSafetyReview(trick)) ||
           (stateFilter === "changed" && changedIds.has(trick.id));
@@ -1108,10 +1111,11 @@ function KnowledgeBulkEditor({
         </button>
       </div>
 
-      <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
         <KnowledgeStat label="下書き" value={stats.draft} />
         <KnowledgeStat label="監修中" value={stats.reviewing} />
         <KnowledgeStat label="監修済み" value={stats.reviewed} />
+        <KnowledgeStat label="別名未設定" value={stats.needsAliases} />
         <KnowledgeStat label="由来要補強" value={stats.needsOrigin} />
         <KnowledgeStat label="安全要補強" value={stats.needsSafety} />
         <KnowledgeStat label="未保存" value={stats.changed} />
@@ -1138,6 +1142,7 @@ function KnowledgeBulkEditor({
           <option value="draft">下書き</option>
           <option value="reviewing">監修中</option>
           <option value="reviewed">監修済み</option>
+          <option value="needsAliases">別名未設定</option>
           <option value="needsOrigin">由来要補強</option>
           <option value="needsSafety">安全要補強</option>
           <option value="changed">未保存のみ</option>
@@ -1162,6 +1167,11 @@ function KnowledgeBulkEditor({
                     <div className="mb-2 flex flex-wrap items-center gap-2">
                       <KnowledgeStatusBadge status={trick.knowledgeStatus} />
                       {changed ? <span className="rounded bg-coral px-2 py-1 text-[11px] font-black text-white">未保存</span> : null}
+                      {needsAliasReview(trick) ? (
+                        <span className="inline-flex items-center gap-1 rounded bg-paper px-2 py-1 text-[11px] font-black text-graphite">
+                          別名未設定
+                        </span>
+                      ) : null}
                       {needsOriginReview(trick) ? (
                         <span className="inline-flex items-center gap-1 rounded bg-saffron/18 px-2 py-1 text-[11px] font-black text-graphite">
                           <BookOpenText aria-hidden className="size-3" />
@@ -1200,6 +1210,7 @@ function KnowledgeBulkEditor({
                       />
                     </div>
                     <Field label="要約" value={trick.summary} onChange={(value) => onUpdate(trick.id, { summary: value })} />
+                    <TextListField label="別名・呼び方" values={trick.aliases} onChange={(value) => onUpdate(trick.id, { aliases: value })} />
                     <LongTextField label="発祥・由来" value={trick.originNote} onChange={(value) => onUpdate(trick.id, { originNote: value })} />
                     <TextListField label="安全注意" values={trick.safetyNotes} onChange={(value) => onUpdate(trick.id, { safetyNotes: value })} />
                   </div>
@@ -1874,6 +1885,7 @@ function mediaPayload(asset: MediaAsset) {
 
 function knowledgePayload(trick: Trick) {
   return {
+    aliases: trick.aliases,
     summary: trick.summary,
     description: trick.description,
     originNote: trick.originNote,
@@ -1886,6 +1898,10 @@ function knowledgePayload(trick: Trick) {
     knowledgeSourceUrls: trick.knowledgeSourceUrls,
     showKnowledgeSources: trick.showKnowledgeSources
   };
+}
+
+function needsAliasReview(trick: Trick) {
+  return !trick.aliases.length;
 }
 
 function needsOriginReview(trick: Trick) {

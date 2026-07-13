@@ -44,6 +44,23 @@ const explicitTags: Record<string, string[]> = {
   "2000": ["ブレイキン", "倒立回転", "高難度"]
 };
 
+const explicitAliases: Record<string, string[]> = {
+  "側転": ["カートホイール", "cartwheel"],
+  "ロンダート": ["ラウンドオフ", "roundoff", "round-off"],
+  "バク転": ["バック転", "バックハンドスプリング", "back handspring"],
+  "ハンドスプリング": ["前方転回", "front handspring"],
+  "前宙": ["前方宙返り", "front flip"],
+  "バク宙": ["バック宙", "後方宙返り", "back flip"],
+  "ロン宙": ["ロンダート宙返り", "roundoff back tuck"],
+  "エアリアル": ["aerial"],
+  "バタフライツイスト": ["B-twist", "btwist"],
+  "コークスクリュー": ["corkscrew", "cork"],
+  "ウインドミル": ["windmill"],
+  "トーマス": ["トーマスフレア", "flare"],
+  "マカコ": ["macaco"],
+  "ヘリコプテイロ": ["helicoptero"]
+};
+
 function clampLevel(value: number): Trick["difficulty"] {
   return Math.max(1, Math.min(5, value)) as Trick["difficulty"];
 }
@@ -225,7 +242,7 @@ export function getAllTricks(): Trick[] {
         id: `trick-${String(historicIndex + 1).padStart(3, "0")}`,
         slug: slugFor(historicIndex, name),
         name,
-        aliases: [],
+        aliases: explicitAliases[name] ?? [],
         summary: makeSummary(name, level.level, family, discipline),
         description: makeDescription(name, level.level, level.category, level.passCondition, family, discipline),
         originNote: makeOriginNote(name, family, discipline),

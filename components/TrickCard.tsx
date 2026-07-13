@@ -19,6 +19,11 @@ export function TrickCard({ trick, returnHref }: { trick: Trick; returnHref?: st
             <span className="max-w-full rounded bg-saffron/18 px-2 py-1 text-xs font-bold text-graphite">{trick.family}</span>
           </div>
           <h2 className="break-words text-lg font-bold leading-tight text-ink">{trick.name}</h2>
+          {trick.aliases.length ? (
+            <p className="mt-1 text-xs font-bold leading-5 text-graphite/58">
+              別名: {trick.aliases.slice(0, 3).join(" / ")}
+            </p>
+          ) : null}
         </div>
         <Link
           href={detailHref}

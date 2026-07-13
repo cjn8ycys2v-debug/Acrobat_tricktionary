@@ -245,12 +245,12 @@ export function TrickExplorer({ tricks, options }: Props) {
           <label className="flex-1">
             <span className="mb-2 flex items-center gap-2 text-sm font-bold text-ink">
               <Search aria-hidden className="size-4 text-pine" />
-              技名・タグ・分類で検索
+              技名・別名・タグ・分類で検索
             </span>
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="例: ロンダート / ひねり / 空中系"
+              placeholder="例: ロンダート / roundoff / ひねり"
               className="h-12 w-full rounded border border-ink/14 bg-paper px-4 text-base outline-none ring-pine/20 transition placeholder:text-graphite/45 focus:border-pine focus:ring-4"
             />
           </label>

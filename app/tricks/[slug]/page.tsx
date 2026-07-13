@@ -51,6 +51,15 @@ export default async function TrickDetailPage({
             <span className="rounded bg-skywash px-3 py-1 text-sm font-bold text-pine">{trick.family}</span>
           </div>
           <h1 className="break-words text-3xl font-black tracking-normal text-ink sm:text-4xl">{trick.name}</h1>
+          {trick.aliases.length ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {trick.aliases.map((alias) => (
+                <span key={alias} className="rounded border border-ink/10 bg-paper px-2.5 py-1 text-xs font-black text-graphite">
+                  別名: {alias}
+                </span>
+              ))}
+            </div>
+          ) : null}
           <p className="mt-4 text-base leading-7 text-graphite/80 sm:text-lg sm:leading-8">{trick.summary}</p>
           <div className="mt-5">
             <Link
