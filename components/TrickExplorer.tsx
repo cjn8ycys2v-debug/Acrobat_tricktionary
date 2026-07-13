@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Activity, Compass, Filter, GitBranch, Map, Search, ShieldAlert, SlidersHorizontal, Waypoints, X } from "lucide-react";
 import type { Trick } from "@/lib/types";
 import { TrickCard } from "@/components/TrickCard";
-import { disciplineDescriptions } from "@/lib/taxonomy";
+import { disciplineDescriptions, disciplineGuides, familyGuides } from "@/lib/taxonomy";
 
 type FilterOptions = {
   disciplines: string[];
@@ -92,10 +92,22 @@ export function TrickExplorer({ tricks, options }: Props) {
       options.disciplines.map((item) => ({
         name: item,
         count: tricks.filter((trick) => trick.discipline === item).length,
-        description: disciplineDescriptions[item] ?? "分類ごとに技をまとめて探索できます。"
+        description: disciplineGuides[item]?.summary ?? disciplineDescriptions[item] ?? "分類ごとに技をまとめて探索できます。"
       })),
     [options.disciplines, tricks]
   );
+
+  const familyStats = useMemo(
+    () =>
+      options.families.map((item) => ({
+        name: item,
+        count: tricks.filter((trick) => trick.family === item).length,
+        guide: familyGuides[item]
+      })),
+    [options.families, tricks]
+  );
+
+  const activeFamilyGuide = family !== allValue ? familyGuides[family] : undefined;
 
   const explorationPresets = useMemo(
     () => {
@@ -367,6 +379,54 @@ export function TrickExplorer({ tricks, options }: Props) {
         </div>
       </div>
 
+      <div className="mt-5">
+        <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-sm font-black text-ink">系統から読む</p>
+            <p className="text-xs leading-5 text-graphite/64">同じ分野でも、支える技・反発する技・空中で見せる技では練習順が変わります。</p>
+          </div>
+          {family !== allValue ? (
+            <button
+              type="button"
+              onClick={() => setFamily(allValue)}
+              className="inline-flex h-9 w-full items-center justify-center rounded border border-ink/12 px-3 text-xs font-black text-graphite transition hover:bg-ink hover:text-white sm:w-auto"
+            >
+              全系統に戻す
+            </button>
+          ) : null}
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {familyStats.map((item) => {
+            const isActive = family === item.name;
+            return (
+              <button
+                key={item.name}
+                type="button"
+                onClick={() => setFamily(item.name)}
+                className={`min-h-[116px] rounded border p-3 text-left transition ${
+                  isActive ? "border-saffron bg-saffron/14 text-ink shadow-sm" : "border-ink/10 bg-white text-ink hover:border-saffron/60 hover:bg-saffron/8"
+                }`}
+              >
+                <span className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-black">{item.name}</span>
+                  <span className="rounded bg-paper px-2 py-0.5 text-[11px] font-black text-graphite">{item.count} 技</span>
+                </span>
+                <span className="mt-2 block text-xs font-semibold leading-5 text-graphite/72">
+                  {item.guide?.summary ?? "近い身体操作の技をまとめた系統です。"}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        {activeFamilyGuide ? (
+          <div className="mt-3 grid gap-2 rounded border border-ink/10 bg-paper p-3 sm:grid-cols-3">
+            <GuideNote label="体の見方" value={activeFamilyGuide.bodyFocus} />
+            <GuideNote label="縄内での使い方" value={activeFamilyGuide.ropeUse} />
+            <GuideNote label="探し方" value={activeFamilyGuide.searchHint} />
+          </div>
+        ) : null}
+      </div>
+
       <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div>
           <p className="text-sm font-semibold text-graphite/72">
@@ -484,5 +544,14 @@ function Select({
         ))}
       </select>
     </label>
+  );
+}
+
+function GuideNote({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded bg-white p-3">
+      <p className="text-[11px] font-black text-pine">{label}</p>
+      <p className="mt-1 text-xs font-semibold leading-5 text-graphite/76">{value}</p>
+    </div>
   );
 }

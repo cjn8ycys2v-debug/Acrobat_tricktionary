@@ -6,6 +6,7 @@ import { MetricDots } from "@/components/MetricDots";
 import { allTricks } from "@/lib/atlas";
 import { formatSeconds, isLikelyDirectVideoPath, videoSrc, youtubeEmbedSrc } from "@/lib/media";
 import { getPublicAtlasContent } from "@/lib/repository";
+import { disciplineGuides, familyGuides, type TaxonomyGuide } from "@/lib/taxonomy";
 import type { MediaAsset, Trick, TrickRelation } from "@/lib/types";
 import { relationLabel } from "@/lib/utils";
 
@@ -32,6 +33,8 @@ export default async function TrickDetailPage({
   const primaryVideo = mediaAssets.find((asset) => asset.storagePath.trim() && asset.consentChecked);
   const source = trick.showSource ? atlas.sources.find((item) => item.id === trick.sourceId) : undefined;
   const returnHref = safeTricksReturnHref(from);
+  const disciplineGuide = disciplineGuides[trick.discipline];
+  const familyGuide = familyGuides[trick.family];
 
   return (
     <main className="mx-auto max-w-7xl px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
@@ -69,6 +72,12 @@ export default async function TrickDetailPage({
             <Info label="縄文脈" value={trick.ropeContext} />
           </div>
           <p className="mt-6 leading-8 text-graphite">{trick.description}</p>
+          {(disciplineGuide || familyGuide) ? (
+            <div className="mt-7 grid gap-3 border-t border-ink/8 pt-6 sm:grid-cols-2">
+              {disciplineGuide ? <TaxonomyGuideBlock title={`${trick.discipline}として見る`} guide={disciplineGuide} /> : null}
+              {familyGuide ? <TaxonomyGuideBlock title={`${trick.family}として見る`} guide={familyGuide} /> : null}
+            </div>
+          ) : null}
           <div className="mt-7 border-t border-ink/8 pt-6">
             <h2 className="mb-4 flex items-center gap-2 text-base font-black text-ink">
               <BookOpenText aria-hidden className="size-5 text-pine" />
@@ -153,6 +162,25 @@ function safeTricksReturnHref(value: string | string[] | undefined) {
   } catch {
     return "/tricks";
   }
+}
+
+function TaxonomyGuideBlock({ title, guide }: { title: string; guide: TaxonomyGuide }) {
+  return (
+    <section className="rounded border border-ink/10 bg-paper p-4">
+      <h2 className="text-sm font-black text-ink">{title}</h2>
+      <p className="mt-2 text-sm font-semibold leading-6 text-graphite/78">{guide.summary}</p>
+      <dl className="mt-3 grid gap-2 text-xs leading-5">
+        <div>
+          <dt className="font-black text-pine">ルーツ</dt>
+          <dd className="mt-0.5 text-graphite/76">{guide.roots}</dd>
+        </div>
+        <div>
+          <dt className="font-black text-pine">縄内での使い方</dt>
+          <dd className="mt-0.5 text-graphite/76">{guide.ropeUse}</dd>
+        </div>
+      </dl>
+    </section>
+  );
 }
 
 function KnowledgeReviewBadge({ trick }: { trick: Trick }) {
