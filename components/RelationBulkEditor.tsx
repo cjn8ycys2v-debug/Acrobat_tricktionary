@@ -52,13 +52,13 @@ export function RelationBulkEditor({ tricks, relations, onRelationsChange, proto
   }
 
   function applyText() {
-    const result = parseRelations(relationText, trickByName);
+    const result = parseRelations(relationText, trickByName, relations);
     if (result.errors.length) {
       setMessage(`反映できない行があります: ${result.errors.slice(0, 4).join(" / ")}`);
       return;
     }
     onRelationsChange(result.relations);
-    setMessage(`${result.relations.length}本の繋がりを画面上に反映しました。保存するとDBへ反映します。`);
+    setMessage(`${result.relations.length}本の繋がりを画面上に反映しました。既存線の中継点は保持しています。保存するとDBへ反映します。`);
   }
 
   async function saveRelations() {
@@ -215,9 +215,10 @@ function exportRelations(relations: TrickRelation[], trickById: Map<string, Tric
     .join("\n");
 }
 
-function parseRelations(text: string, trickByName: Map<string, Trick>) {
+function parseRelations(text: string, trickByName: Map<string, Trick>, currentRelations: TrickRelation[]) {
   const errors: string[] = [];
   const relationByKey = new Map<string, TrickRelation>();
+  const currentByKey = new Map(currentRelations.map((relation) => [relationKey(relation.fromTrickId, relation.toTrickId, relation.type), relation]));
 
   text
     .split("\n")
@@ -250,20 +251,25 @@ function parseRelations(text: string, trickByName: Map<string, Trick>) {
         noteStartIndex = 3;
       }
       const note = parts.slice(noteStartIndex).join(" | ") || "管理画面で一括指定";
-      const key = `${from.id}\u0000${to.id}\u0000${type}`;
+      const key = relationKey(from.id, to.id, type);
+      const current = currentByKey.get(key);
 
       relationByKey.set(key, {
-        id: `draft-${from.id}-${to.id}-${type}`,
+        id: current?.id ?? `draft-${from.id}-${to.id}-${type}`,
         fromTrickId: from.id,
         toTrickId: to.id,
         type,
         note,
         strength,
-        waypoints: []
+        waypoints: current?.waypoints ?? []
       });
     });
 
   return { relations: Array.from(relationByKey.values()), errors };
+}
+
+function relationKey(fromTrickId: string, toTrickId: string, type: RelationType) {
+  return `${fromTrickId}\u0000${toTrickId}\u0000${type}`;
 }
 
 function parseRelationType(value: string | undefined): RelationType {

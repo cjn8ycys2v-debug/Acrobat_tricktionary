@@ -55,6 +55,7 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
   const [newRelationType, setNewRelationType] = useState<RelationType>("progression");
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [relationQuery, setRelationQuery] = useState("");
+  const [relationDisplayMode, setRelationDisplayMode] = useState<"direct" | "all">("direct");
 
   const trickById = useMemo(() => new Map(tricks.map((trick) => [trick.id, trick])), [tricks]);
   const visibleTricks = useMemo(() => {
@@ -65,7 +66,12 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
     }
     return tricks.filter((trick) => ids.has(trick.id));
   }, [relations, tricks]);
-  const visibleRelations = useMemo(() => makeDirectSkillTreeRelations(relations, visibleTricks), [relations, visibleTricks]);
+  const validRelations = useMemo(
+    () => relations.filter((relation) => trickById.has(relation.fromTrickId) && trickById.has(relation.toTrickId)),
+    [relations, trickById]
+  );
+  const directRelations = useMemo(() => makeDirectSkillTreeRelations(validRelations, visibleTricks), [validRelations, visibleTricks]);
+  const visibleRelations = relationDisplayMode === "all" ? validRelations : directRelations;
   const editableRelations = useMemo(
     () => visibleRelations.filter((relation) => trickById.has(relation.fromTrickId) && trickById.has(relation.toTrickId)),
     [trickById, visibleRelations]
@@ -76,7 +82,7 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
     return new Map(families.map((family, index) => [family, familyColors[index % familyColors.length]]));
   }, [visibleTricks]);
 
-  const autoNodes = useMemo(() => makeNodes(visibleTricks, visibleRelations, mapPositions, familyByName), [familyByName, mapPositions, visibleRelations, visibleTricks]);
+  const autoNodes = useMemo(() => makeNodes(visibleTricks, directRelations, mapPositions, familyByName), [directRelations, familyByName, mapPositions, visibleTricks]);
 
   const updateRelationWaypoints = useCallback(
     (relationId: string, updater: (waypoints: RelationWaypoint[]) => RelationWaypoint[]) => {
@@ -134,12 +140,12 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
     if (prototypeMode) {
       const stored = readStoredPositions();
       if (stored.length) {
-        setNodes(makeNodes(visibleTricks, visibleRelations, stored, familyByName));
+        setNodes(makeNodes(visibleTricks, directRelations, stored, familyByName));
         return;
       }
     }
     setNodes(autoNodes);
-  }, [autoNodes, familyByName, prototypeMode, visibleRelations, visibleTricks]);
+  }, [autoNodes, directRelations, familyByName, prototypeMode, visibleTricks]);
 
   useEffect(() => {
     setLayoutText(exportLayout(nodes, trickById));
@@ -188,6 +194,7 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
       };
       onRelationsChange([...relations, relation]);
       setSelectedEdgeId(relation.id);
+      setRelationDisplayMode("all");
       const from = trickById.get(connection.source)?.name ?? "元の技";
       const to = trickById.get(connection.target)?.name ?? "次の技";
       setMessage(`${from} → ${to} を${relationLabel(newRelationType)}として追加しました。DBに反映するには「線を保存」を押してください。`);
@@ -320,7 +327,7 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
   }
 
   function resetAutoLayout() {
-    setNodes(makeNodes(visibleTricks, visibleRelations, [], familyByName));
+    setNodes(makeNodes(visibleTricks, directRelations, [], familyByName));
     setMessage("自動整列に戻しました。保存すると公式配置として反映されます。");
   }
 
@@ -342,7 +349,7 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
         return;
       }
 
-      setNodes(makeNodes(visibleTricks, visibleRelations, positionsFromText, familyByName));
+      setNodes(makeNodes(visibleTricks, directRelations, positionsFromText, familyByName));
       setMessage(`JSONから${positionsFromText.length}件の配置を反映しました。`);
     } catch {
       setMessage("JSONの形式を確認してください。");
@@ -386,6 +393,17 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
           </p>
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
+          <label className="inline-flex h-10 items-center gap-2 rounded border border-ink/14 bg-paper px-3 text-xs font-black text-graphite">
+            表示する線
+            <select
+              value={relationDisplayMode}
+              onChange={(event) => setRelationDisplayMode(event.target.value as "direct" | "all")}
+              className="h-8 rounded border border-ink/10 bg-white px-2 text-xs font-black outline-none focus:border-pine"
+            >
+              <option value="direct">整理済み</option>
+              <option value="all">全て</option>
+            </select>
+          </label>
           <label className="inline-flex h-10 items-center gap-2 rounded border border-ink/14 bg-paper px-3 text-xs font-black text-graphite">
             追加する線
             <select
@@ -580,7 +598,9 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
                 <ListTree aria-hidden className="size-4 text-pine" />
                 表示中の線
               </p>
-              <span className="rounded bg-white px-2 py-1 text-[11px] font-black text-graphite/68">{editableRelations.length}本</span>
+              <span className="rounded bg-white px-2 py-1 text-[11px] font-black text-graphite/68">
+                {editableRelations.length} / {validRelations.length}本
+              </span>
             </div>
             <label className="mt-3 flex h-9 items-center gap-2 rounded border border-ink/12 bg-white px-2.5 text-xs focus-within:border-pine">
               <Search aria-hidden className="size-4 shrink-0 text-graphite/42" />
