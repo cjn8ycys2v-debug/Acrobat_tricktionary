@@ -140,7 +140,7 @@ function normalizeMediaAssets(value: unknown[]): MediaInput[] {
       const storagePath = typeof input.storagePath === "string" ? input.storagePath.trim() : "";
       const referenceUrl = typeof input.referenceUrl === "string" ? input.referenceUrl.trim() : "";
       if (!storagePath && !referenceUrl) return null;
-      const referenceStartSec = normalizeOptionalSecond(input.referenceStartSec);
+      const referenceStartSec = normalizeOptionalSecond(input.referenceStartSec) ?? parseTimecodeToSeconds(referenceUrl);
       const referenceEndSec = normalizeOptionalSecond(input.referenceEndSec);
       return {
         storagePath,

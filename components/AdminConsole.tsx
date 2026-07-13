@@ -1383,6 +1383,25 @@ function VideoBulkEditor({
     }
   }
 
+  async function copyVisibleVideoMemos() {
+    const text = visibleVideos
+      .map((asset) => makeVideoWorkMemo(asset, trickById.get(asset.trickId)))
+      .filter(Boolean)
+      .join("\n\n---\n\n");
+
+    if (!text) {
+      onMessage("表示中の動画候補にコピーできる作業メモがありません。");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      onMessage(`表示中の${visibleVideos.length}件分の再アップ作業メモをコピーしました。`);
+    } catch {
+      onMessage("ブラウザの権限でコピーできませんでした。動画台帳のテキストから手動でコピーしてください。");
+    }
+  }
+
   return (
     <section className="rounded border border-ink/10 bg-white p-4 shadow-sm sm:p-5">
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -1407,7 +1426,7 @@ function VideoBulkEditor({
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(360px,.9fr)]">
         <div className="grid gap-3">
-          <div className="grid gap-2 sm:grid-cols-[1fr_160px]">
+          <div className="grid gap-2 sm:grid-cols-[1fr_160px] lg:grid-cols-[1fr_160px_auto]">
             <label className="flex h-10 min-w-0 items-center gap-2 rounded border border-ink/12 bg-paper px-3 text-sm focus-within:border-pine">
               <Search aria-hidden className="size-4 shrink-0 text-graphite/42" />
               <input
@@ -1428,6 +1447,14 @@ function VideoBulkEditor({
               <option value="ready">埋め込みOK</option>
               <option value="empty">未指定</option>
             </select>
+            <button
+              type="button"
+              onClick={copyVisibleVideoMemos}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded border border-ink/14 bg-white px-3 text-sm font-black text-graphite transition hover:border-pine hover:text-pine"
+            >
+              <Copy aria-hidden className="size-4" />
+              表示分メモ
+            </button>
           </div>
 
           <div className="max-h-[560px] overflow-auto rounded border border-ink/10 bg-paper p-2">
@@ -1609,7 +1636,13 @@ function VideoReferenceEditor({
                     label="参考YouTube URL"
                     value={asset.referenceUrl ?? ""}
                     placeholder="参考にするYouTube URL"
-                    onChange={(value) => onUpdate(asset.id, { referenceUrl: value })}
+                    onChange={(value) => {
+                      const inferredStart = parseTimecodeToSeconds(value);
+                      onUpdate(asset.id, {
+                        referenceUrl: value,
+                        ...(asset.referenceStartSec === undefined && inferredStart !== undefined ? { referenceStartSec: inferredStart } : {})
+                      });
+                    }}
                   />
                   <div className="grid gap-3 sm:grid-cols-2">
                     <OptionalSecondField
@@ -1766,15 +1799,22 @@ function makeVideoWorkMemo(asset: MediaAsset, trick?: Trick) {
   const range = formatReferenceRange(asset) || "未指定";
   const publicUrl = asset.storagePath.trim() || "未登録";
   const state = videoWorkflowState(asset).label;
+  const trickName = trick?.name ?? asset.trickId;
 
   if (!reference && publicUrl === "未登録") return "";
 
   return [
-    `技名: ${trick?.name ?? asset.trickId}`,
+    `技名: ${trickName}`,
     `状態: ${state}`,
+    `YouTubeタイトル案: ${trickName} お手本`,
     `参考区間: ${range}`,
     `参考URL: ${reference || "未指定"}`,
     `再アップ後の公開用URL: ${publicUrl}`,
+    "作業:",
+    "- 参考区間を確認する",
+    "- 自分で撮影または許諾済みの動画を限定公開でアップロードする",
+    "- 再アップ後のURLを公開用URLに貼る",
+    "- 公開利用確認にチェックしてDB保存する",
     asset.credit ? `クレジット: ${asset.credit}` : "",
     asset.rightsNote ? `権利・許諾メモ: ${asset.rightsNote}` : ""
   ]
@@ -1966,8 +2006,11 @@ function parseVideoRows(text: string, tricks: Trick[], currentMediaAssets: Media
   const errors: string[] = [];
   const trickByKey = new Map<string, Trick>();
   for (const trick of tricks) {
-    trickByKey.set(trick.name, trick);
-    trickByKey.set(trick.slug, trick);
+    trickByKey.set(normalizeVideoTrickKey(trick.name), trick);
+    trickByKey.set(normalizeVideoTrickKey(trick.slug), trick);
+    for (const alias of trick.aliases) {
+      trickByKey.set(normalizeVideoTrickKey(alias), trick);
+    }
   }
 
   const existingByKey = new Map(
@@ -1982,14 +2025,14 @@ function parseVideoRows(text: string, tricks: Trick[], currentMediaAssets: Media
     .filter((line) => line && !line.startsWith("#"))
     .forEach((line, index) => {
       const parts = line.split("|").map((part) => part.trim());
-      const trick = trickByKey.get(parts[0]);
+      const trick = trickByKey.get(normalizeVideoTrickKey(parts[0]));
       if (!trick) {
         errors.push(`${index + 1}行目: 技名が見つかりません`);
         return;
       }
 
       const referenceUrl = parts[1] ?? "";
-      const referenceStartSec = parseOptionalSecond(parts[2]);
+      const referenceStartSec = parseOptionalSecond(parts[2]) ?? parseTimecodeToSeconds(referenceUrl);
       const referenceEndSec = normalizeReferenceEnd(referenceStartSec, parseOptionalSecond(parts[3]));
       const storagePath = parts[4] ?? "";
       if (!referenceUrl && !storagePath) {
@@ -2019,6 +2062,10 @@ function parseVideoRows(text: string, tricks: Trick[], currentMediaAssets: Media
     videoCount: parsedVideos.length,
     errors
   };
+}
+
+function normalizeVideoTrickKey(value: string) {
+  return value.trim().toLowerCase();
 }
 
 function videoRowKey(trickId: string, storagePath: string, referenceUrl: string, referenceStartSec?: number) {
