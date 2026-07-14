@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, ShieldAlert, Waypoints } from "lucide-react";
+import { ArrowUpRight, GitBranch, ShieldAlert, Waypoints } from "lucide-react";
 import type { Trick } from "@/lib/types";
 import { MetricDots } from "@/components/MetricDots";
 
@@ -8,6 +8,7 @@ export function TrickCard({ trick, returnHref }: { trick: Trick; returnHref?: st
     returnHref && returnHref !== "/tricks"
       ? { pathname: `/tricks/${trick.slug}` as `/tricks/${string}`, query: { from: returnHref } }
       : (`/tricks/${trick.slug}` as `/tricks/${string}`);
+  const mapHref = { pathname: "/map" as const, query: { trick: trick.slug } };
 
   return (
     <article className="group flex h-full flex-col rounded border border-ink/10 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-pine/40 hover:shadow-soft">
@@ -47,6 +48,22 @@ export function TrickCard({ trick, returnHref }: { trick: Trick; returnHref?: st
           <ShieldAlert aria-hidden className="size-3" />
           <span className="break-words">{trick.ropeContext}</span>
         </span>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-2 border-t border-ink/8 pt-4">
+        <Link
+          href={detailHref}
+          className="inline-flex h-9 items-center justify-center gap-2 rounded border border-ink/10 px-2 text-xs font-black text-graphite transition hover:border-pine hover:text-pine"
+        >
+          詳細
+          <ArrowUpRight aria-hidden className="size-3.5" />
+        </Link>
+        <Link
+          href={mapHref}
+          className="inline-flex h-9 items-center justify-center gap-2 rounded bg-pine px-2 text-xs font-black text-white transition hover:bg-ink"
+        >
+          <GitBranch aria-hidden className="size-3.5" />
+          相関図
+        </Link>
       </div>
     </article>
   );

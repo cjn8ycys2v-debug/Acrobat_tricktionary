@@ -146,6 +146,30 @@ export function TrickExplorer({ tricks, options }: Props) {
           description: "目線、肩、着地方向を作る発展技",
           icon: Waypoints,
           criteria: { family: "ひねり" }
+        },
+        {
+          label: "体操から積む",
+          description: "転回、反発、宙返りの再現性を作る",
+          icon: ShieldAlert,
+          criteria: { discipline: "体操" }
+        },
+        {
+          label: "トリッキングで映える",
+          description: "蹴り、片足踏切、斜め軌道を使う",
+          icon: Compass,
+          criteria: { discipline: "トリッキング" }
+        },
+        {
+          label: "床回転で見せる",
+          description: "支持、回転、低い質感を演技に入れる",
+          icon: Activity,
+          criteria: { discipline: "ブレイキン" }
+        },
+        {
+          label: "カポエイラの流れ",
+          description: "片手支持と蹴り上げで滑らかに返す",
+          icon: Waypoints,
+          criteria: { discipline: "カポエイラ" }
         }
       ];
 
@@ -313,11 +337,11 @@ export function TrickExplorer({ tricks, options }: Props) {
         <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-sm font-black text-ink">目的から探す</p>
-            <p className="text-xs leading-5 text-graphite/64">練習の入り口、床作り、反発、空中、ひねりの順に入口を分けました。</p>
+            <p className="text-xs leading-5 text-graphite/64">縄内の入口、体操の土台、トリッキング、ブレイキン、カポエイラまで横断して探せます。</p>
           </div>
           {activePresetLabel ? <p className="text-xs font-black text-pine">選択中: {activePresetLabel}</p> : null}
         </div>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {explorationPresets.map((preset) => {
             const Icon = preset.icon;
             const isActive = activePresetLabel === preset.label;
