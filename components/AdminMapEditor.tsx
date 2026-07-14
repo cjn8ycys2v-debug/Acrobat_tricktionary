@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Background,
@@ -15,7 +16,7 @@ import {
   type Connection
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { GitBranch, ListTree, MousePointer2, Plus, RotateCcw, Save, Search, Trash2 } from "lucide-react";
+import { ExternalLink, GitBranch, ListTree, MousePointer2, Plus, RotateCcw, Save, Search, Trash2 } from "lucide-react";
 import { RouteEdge, type RouteEdgeData } from "@/components/RouteEdge";
 import { makeDirectSkillTreeRelations, makeLevelColumnLayoutMap } from "@/lib/map-layout";
 import { sortFamilies } from "@/lib/taxonomy";
@@ -71,6 +72,7 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
     [relations, trickById]
   );
   const directRelations = useMemo(() => makeDirectSkillTreeRelations(validRelations, visibleTricks), [validRelations, visibleTricks]);
+  const directRelationIds = useMemo(() => new Set(directRelations.map((relation) => relation.id)), [directRelations]);
   const visibleRelations = relationDisplayMode === "all" ? validRelations : directRelations;
   const editableRelations = useMemo(
     () => visibleRelations.filter((relation) => trickById.has(relation.fromTrickId) && trickById.has(relation.toTrickId)),
@@ -356,8 +358,11 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
     }
   }
 
-  const selectedFromName = selectedRelation ? (trickById.get(selectedRelation.fromTrickId)?.name ?? selectedRelation.fromTrickId) : "";
-  const selectedToName = selectedRelation ? (trickById.get(selectedRelation.toTrickId)?.name ?? selectedRelation.toTrickId) : "";
+  const selectedFromTrick = selectedRelation ? trickById.get(selectedRelation.fromTrickId) : undefined;
+  const selectedToTrick = selectedRelation ? trickById.get(selectedRelation.toTrickId) : undefined;
+  const selectedFromName = selectedRelation ? (selectedFromTrick?.name ?? selectedRelation.fromTrickId) : "";
+  const selectedToName = selectedRelation ? (selectedToTrick?.name ?? selectedRelation.toTrickId) : "";
+  const selectedVisibilityLabel = selectedRelation ? relationVisibilityLabel(selectedRelation, directRelationIds.has(selectedRelation.id)) : "";
   const filteredEditableRelations = useMemo(() => {
     const normalized = relationQuery.trim().toLowerCase();
     if (!normalized) return editableRelations;
@@ -484,9 +489,20 @@ export function AdminMapEditor({ tricks, relations, mapPositions, prototypeMode,
                 <p className="text-sm font-black leading-5 text-ink">
                   {selectedFromName} → {selectedToName}
                 </p>
-                <p className="mt-1 text-xs font-semibold text-graphite/68">
-                  {relationLabel(selectedRelation.type)} / 中継点 {selectedRelation.waypoints.length}個
-                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <span className="rounded bg-white px-2 py-1 text-xs font-black text-graphite">{relationLabel(selectedRelation.type)}</span>
+                  <span className="rounded bg-white px-2 py-1 text-xs font-black text-graphite">中継点 {selectedRelation.waypoints.length}</span>
+                  <span className="rounded bg-skywash px-2 py-1 text-xs font-black text-pine">{selectedVisibilityLabel}</span>
+                </div>
+                {selectedFromTrick ? (
+                  <Link
+                    href={`/map?trick=${encodeURIComponent(selectedFromTrick.slug)}`}
+                    className="mt-3 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded border border-ink/10 bg-white px-2.5 text-xs font-black text-graphite transition hover:border-pine hover:text-pine"
+                  >
+                    <ExternalLink aria-hidden className="size-3.5" />
+                    公開相関図で見る
+                  </Link>
+                ) : null}
                 <div className="mt-3 grid gap-2">
                   <label className="text-[10px] font-black text-graphite/58">
                     種類
@@ -741,4 +757,9 @@ function midpoint(start: RelationWaypoint, end: RelationWaypoint): RelationWaypo
 
 function normalizeStrength(value: number): 1 | 2 | 3 | 4 | 5 {
   return Math.max(1, Math.min(5, Math.round(value || 3))) as 1 | 2 | 3 | 4 | 5;
+}
+
+function relationVisibilityLabel(relation: TrickRelation, isDirect: boolean) {
+  if (relation.type === "variation" || relation.type === "combo") return "任意表示";
+  return isDirect ? "整理済み表示" : "全表示のみ";
 }

@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
-import { GitBranch, Save, Wand2 } from "lucide-react";
+import { ExternalLink, GitBranch, Save, Wand2 } from "lucide-react";
+import { makeDirectSkillTreeRelations } from "@/lib/map-layout";
 import type { RelationType, Trick, TrickRelation } from "@/lib/types";
 import { relationLabel } from "@/lib/utils";
 
@@ -25,6 +27,7 @@ export function RelationBulkEditor({ tricks, relations, onRelationsChange, proto
   const [familyFilter, setFamilyFilter] = useState<string>(allValue);
   const [relationText, setRelationText] = useState(() => exportRelations(relations, trickById));
   const [message, setMessage] = useState("現在の繋がりを一覧で確認し、テキストでまとめて指示できます。");
+  const directRelationIds = useMemo(() => new Set(makeDirectSkillTreeRelations(relations, tricks).map((relation) => relation.id)), [relations, tricks]);
 
   const visibleRelations = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -154,10 +157,23 @@ export function RelationBulkEditor({ tricks, relations, onRelationsChange, proto
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="rounded bg-skywash px-2 py-1 text-xs font-black text-pine">{relationLabel(relation.type)}</span>
                       <span className="rounded bg-saffron/18 px-2 py-1 text-xs font-black text-graphite">強さ {relation.strength}</span>
+                      <RelationDisplayBadge relation={relation} isDirect={directRelationIds.has(relation.id)} />
+                      {relation.waypoints.length ? (
+                        <span className="rounded bg-ink/6 px-2 py-1 text-xs font-black text-graphite">中継点 {relation.waypoints.length}</span>
+                      ) : null}
                     </div>
-                    <p className="mt-2 text-sm font-black leading-6 text-ink">
-                      {from.name} <span className="text-coral">→</span> {to.name}
-                    </p>
+                    <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <p className="min-w-0 text-sm font-black leading-6 text-ink">
+                        {from.name} <span className="text-coral">→</span> {to.name}
+                      </p>
+                      <Link
+                        href={`/map?trick=${encodeURIComponent(from.slug)}`}
+                        className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded border border-ink/10 px-2.5 text-xs font-black text-graphite transition hover:border-pine hover:text-pine"
+                      >
+                        <ExternalLink aria-hidden className="size-3.5" />
+                        相関図
+                      </Link>
+                    </div>
                     <p className="mt-1 text-xs leading-5 text-graphite/70">{relation.note || "メモなし"}</p>
                   </div>
                 );
@@ -202,6 +218,18 @@ export function RelationBulkEditor({ tricks, relations, onRelationsChange, proto
         </div>
       </div>
     </section>
+  );
+}
+
+function RelationDisplayBadge({ relation, isDirect }: { relation: TrickRelation; isDirect: boolean }) {
+  if (relation.type === "variation" || relation.type === "combo") {
+    return <span className="rounded bg-paper px-2 py-1 text-xs font-black text-graphite">任意表示</span>;
+  }
+
+  return isDirect ? (
+    <span className="rounded bg-pine px-2 py-1 text-xs font-black text-white">整理済み表示</span>
+  ) : (
+    <span className="rounded bg-coral/12 px-2 py-1 text-xs font-black text-coral">全表示のみ</span>
   );
 }
 
