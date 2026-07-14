@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, BookOpenText, ClipboardList, ExternalLink, GitBranch, Lightbulb, PlayCircle, ShieldAlert, TriangleAlert, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
+import { MasteryToggle } from "@/components/MasteryToggle";
 import { MetricDots } from "@/components/MetricDots";
 import { allTricks } from "@/lib/atlas";
 import { formatSeconds, isLikelyDirectVideoPath, videoSrc, youtubeEmbedSrc } from "@/lib/media";
@@ -57,7 +58,7 @@ export default async function TrickDetailPage({
             </div>
           ) : null}
           <p className="mt-4 text-base leading-7 text-graphite/80 sm:text-lg sm:leading-8">{trick.summary}</p>
-          <div className="mt-5">
+          <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             <Link
               href={`/map?trick=${encodeURIComponent(trick.slug)}`}
               className="inline-flex h-11 w-full items-center justify-center gap-2 rounded bg-pine px-4 text-sm font-black text-white transition hover:bg-ink sm:w-auto"
@@ -65,6 +66,7 @@ export default async function TrickDetailPage({
               <GitBranch aria-hidden className="size-4" />
               相関図で見る
             </Link>
+            <MasteryToggle trickId={trick.id} trickName={trick.name} />
           </div>
           <div className="mt-5 grid gap-4 border-y border-ink/8 py-5 sm:mt-6 sm:grid-cols-2">
             <MetricDots label="難度" value={trick.difficulty} />

@@ -18,12 +18,12 @@ import {
 import { CheckCircle2, Circle, RotateCcw, Search, Sparkles, Trophy } from "lucide-react";
 import "@xyflow/react/dist/style.css";
 import { isPrimarySkillRelation, makeDirectSkillTreeRelations, makeLevelColumnLayoutMap } from "@/lib/map-layout";
+import { masteryChangeEvent, masteryStorageKey } from "@/lib/mastery";
 import { RouteEdge, type RouteEdgeData } from "@/components/RouteEdge";
 import { sortDisciplines, sortFamilies } from "@/lib/taxonomy";
 import type { RelationType, Trick, TrickMapPosition, TrickRelation } from "@/lib/types";
 import { relationLabel } from "@/lib/utils";
 
-const storageKey = "dd-acro-mastered-tricks";
 export const editorLayoutStorageKey = "dd-acro-editor-map-layout-v2";
 
 const edgeStyles: Record<RelationType, { color: string; label: string }> = {
@@ -102,7 +102,7 @@ export function LearningMap({
 
   useEffect(() => {
     try {
-      const raw = window.localStorage.getItem(storageKey);
+      const raw = window.localStorage.getItem(masteryStorageKey);
       if (raw) setMasteredIds(new Set(JSON.parse(raw) as string[]));
     } catch {
       setMasteredIds(new Set());
@@ -113,7 +113,8 @@ export function LearningMap({
 
   useEffect(() => {
     if (!isLoaded) return;
-    window.localStorage.setItem(storageKey, JSON.stringify(Array.from(masteredIds)));
+    window.localStorage.setItem(masteryStorageKey, JSON.stringify(Array.from(masteredIds)));
+    window.dispatchEvent(new CustomEvent(masteryChangeEvent));
   }, [isLoaded, masteredIds]);
 
   useEffect(() => {
