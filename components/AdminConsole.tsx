@@ -39,6 +39,7 @@ type Props = {
 };
 
 type AdminSection = "tricks" | "knowledge" | "videos" | "relations" | "layout" | "status";
+type VideoWorkflowKind = "ready" | "needsPublishUrl" | "needsConsent" | "empty";
 
 type KnowledgePatch = Partial<
   Pick<
@@ -1317,6 +1318,55 @@ function VideoBulkEditor({
     }),
     [videoAssets]
   );
+  const videoQueue = useMemo(() => {
+    const definitions: Array<{
+      kind: VideoWorkflowKind;
+      title: string;
+      action: string;
+      className: string;
+    }> = [
+      {
+        kind: "needsPublishUrl",
+        title: "再アップ待ち",
+        action: "参考区間を確認して、自分の限定公開URLへ差し替え",
+        className: "border-coral/24 bg-coral/7"
+      },
+      {
+        kind: "needsConsent",
+        title: "確認待ち",
+        action: "撮影・出演・利用許諾を確認してチェック",
+        className: "border-saffron/40 bg-saffron/10"
+      },
+      {
+        kind: "ready",
+        title: "埋め込みOK",
+        action: "技詳細で再生と表示崩れを確認",
+        className: "border-pine/22 bg-skywash"
+      },
+      {
+        kind: "empty",
+        title: "未指定",
+        action: "参考URLか公開用URLを追加",
+        className: "border-ink/10 bg-paper"
+      }
+    ];
+
+    return definitions.map((definition) => {
+      const items = videoAssets
+        .filter((asset) => videoWorkflowState(asset).kind === definition.kind)
+        .sort((a, b) => {
+          const trickA = trickById.get(a.trickId);
+          const trickB = trickById.get(b.trickId);
+          return (trickA?.level ?? 999) - (trickB?.level ?? 999) || (trickA?.name ?? "").localeCompare(trickB?.name ?? "", "ja");
+        });
+
+      return {
+        ...definition,
+        count: items.length,
+        items: items.slice(0, 3)
+      };
+    });
+  }, [trickById, videoAssets]);
 
   const visibleVideos = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -1424,6 +1474,53 @@ function VideoBulkEditor({
 
       <p className="mb-3 rounded bg-paper px-3 py-2 text-xs font-semibold text-graphite/72">{message}</p>
 
+      <div className="mb-4 grid gap-2 lg:grid-cols-4">
+        {videoQueue.map((group) => (
+          <section key={group.kind} className={`rounded border p-3 ${group.className}`}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-black text-ink">{group.title}</p>
+                <p className="mt-1 text-xs font-semibold leading-5 text-graphite/70">{group.action}</p>
+              </div>
+              <span className="rounded bg-white/80 px-2 py-1 text-sm font-black text-ink">{group.count}</span>
+            </div>
+            <div className="mt-3 grid gap-2">
+              {group.items.length ? (
+                group.items.map((asset) => {
+                  const trick = trickById.get(asset.trickId);
+                  const reference = timedReferenceUrl(asset) || asset.referenceUrl?.trim() || "";
+                  return (
+                    <div key={asset.id} className="rounded border border-white/80 bg-white/78 px-2.5 py-2 text-xs leading-5">
+                      <p className="truncate font-black text-ink">{trick?.name ?? asset.trickId}</p>
+                      <p className="text-graphite/62">
+                        Lv.{trick?.level || "-"} / {trick?.family ?? "-"}
+                      </p>
+                      {reference ? (
+                        <a href={reference} target="_blank" rel="noreferrer" className="block truncate font-bold text-pine underline-offset-4 hover:underline">
+                          参考を開く
+                        </a>
+                      ) : null}
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="rounded border border-white/70 bg-white/55 px-2.5 py-2 text-xs font-semibold text-graphite/58">該当なし</p>
+              )}
+              {group.count > group.items.length ? (
+                <p className="text-xs font-bold text-graphite/62">ほか {group.count - group.items.length} 件</p>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              onClick={() => setStateFilter(group.kind)}
+              className="mt-3 inline-flex min-h-8 w-full items-center justify-center rounded border border-ink/10 bg-white px-2 text-xs font-black text-graphite transition hover:border-pine hover:text-pine"
+            >
+              一覧で見る
+            </button>
+          </section>
+        ))}
+      </div>
+
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(360px,.9fr)]">
         <div className="grid gap-3">
           <div className="grid gap-2 sm:grid-cols-[1fr_160px] lg:grid-cols-[1fr_160px_auto]">
@@ -1482,18 +1579,23 @@ function VideoBulkEditor({
                         <Trash2 aria-hidden className="size-4" />
                       </button>
                     </div>
-                    <span className={`inline-flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] font-black ${state.className}`}>
-                      {state.kind === "ready" ? <CheckCircle2 aria-hidden className="size-3.5" /> : <Clock aria-hidden className="size-3.5" />}
-                      {state.label}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => copyVideoMemo(asset, trick)}
-                      className="ml-2 inline-flex min-h-7 items-center gap-1 rounded border border-ink/10 bg-paper px-2 py-1 text-[11px] font-black text-graphite transition hover:border-pine hover:text-pine"
-                    >
-                      <Copy aria-hidden className="size-3.5" />
-                      作業メモ
-                    </button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`inline-flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] font-black ${state.className}`}>
+                        {state.kind === "ready" ? <CheckCircle2 aria-hidden className="size-3.5" /> : <Clock aria-hidden className="size-3.5" />}
+                        {state.label}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => copyVideoMemo(asset, trick)}
+                        className="inline-flex min-h-7 items-center gap-1 rounded border border-ink/10 bg-paper px-2 py-1 text-[11px] font-black text-graphite transition hover:border-pine hover:text-pine"
+                      >
+                        <Copy aria-hidden className="size-3.5" />
+                        作業メモ
+                      </button>
+                    </div>
+                    <p className="mt-2 rounded border border-ink/8 bg-paper px-2 py-1.5 text-xs font-semibold leading-5 text-graphite/72">
+                      次: {videoWorkflowNextAction(asset)}
+                    </p>
                     <div className="mt-2 grid gap-1.5 text-xs leading-5 text-graphite/72">
                       {asset.storagePath ? <p className="break-all font-bold text-ink">公開: {asset.storagePath}</p> : null}
                       {reference ? (
@@ -1794,27 +1896,48 @@ function videoWorkflowState(asset: MediaAsset) {
   };
 }
 
+function videoWorkflowNextAction(asset: MediaAsset) {
+  const kind = videoWorkflowState(asset).kind;
+  if (kind === "ready") return "技詳細ページで再生と表示を確認";
+  if (kind === "needsConsent") return "撮影・出演・利用許諾を確認して公開OKにする";
+  if (kind === "needsPublishUrl") return "参考区間を見て、自分の限定公開URLへ差し替え";
+  return "参考URLまたは公開用URLを追加";
+}
+
+function videoWorkflowSteps(asset: MediaAsset) {
+  const kind = videoWorkflowState(asset).kind;
+  if (kind === "ready") {
+    return ["技詳細ページで再生できるか確認する", "必要ならクレジットや権利メモを整える"];
+  }
+  if (kind === "needsConsent") {
+    return ["公開用URLの動画が自分で使える素材か確認する", "出演・撮影・利用許諾を確認する", "公開利用確認にチェックしてDB保存する"];
+  }
+  if (kind === "needsPublishUrl") {
+    return ["参考区間を確認する", "自分で撮影または許諾済みの動画を限定公開でアップロードする", "再アップ後のURLを公開用URLに貼る", "公開利用確認にチェックしてDB保存する"];
+  }
+  return ["参考YouTube URLと秒数を追加する", "または自分の限定公開URLを公開用URLに貼る"];
+}
+
 function makeVideoWorkMemo(asset: MediaAsset, trick?: Trick) {
   const reference = timedReferenceUrl(asset) || asset.referenceUrl?.trim() || "";
   const range = formatReferenceRange(asset) || "未指定";
   const publicUrl = asset.storagePath.trim() || "未登録";
   const state = videoWorkflowState(asset).label;
   const trickName = trick?.name ?? asset.trickId;
+  const steps = videoWorkflowSteps(asset);
 
   if (!reference && publicUrl === "未登録") return "";
 
   return [
     `技名: ${trickName}`,
     `状態: ${state}`,
+    `次の作業: ${videoWorkflowNextAction(asset)}`,
     `YouTubeタイトル案: ${trickName} お手本`,
     `参考区間: ${range}`,
     `参考URL: ${reference || "未指定"}`,
     `再アップ後の公開用URL: ${publicUrl}`,
     "作業:",
-    "- 参考区間を確認する",
-    "- 自分で撮影または許諾済みの動画を限定公開でアップロードする",
-    "- 再アップ後のURLを公開用URLに貼る",
-    "- 公開利用確認にチェックしてDB保存する",
+    ...steps.map((step) => `- ${step}`),
     asset.credit ? `クレジット: ${asset.credit}` : "",
     asset.rightsNote ? `権利・許諾メモ: ${asset.rightsNote}` : ""
   ]
