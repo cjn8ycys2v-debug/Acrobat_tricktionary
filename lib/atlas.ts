@@ -61,6 +61,212 @@ const explicitAliases: Record<string, string[]> = {
   "ヘリコプテイロ": ["helicoptero"]
 };
 
+type TrickKnowledgeOverride = Partial<
+  Pick<
+    Trick,
+    | "aliases"
+    | "summary"
+    | "description"
+    | "originNote"
+    | "practiceSteps"
+    | "commonMistakes"
+    | "safetyNotes"
+    | "coachComment"
+    | "knowledgeStatus"
+    | "knowledgeSourceUrls"
+    | "showKnowledgeSources"
+    | "tags"
+  >
+>;
+
+const knowledgeOverrides: Record<string, TrickKnowledgeOverride> = {
+  "側転": {
+    summary: "手で床を押しながら体を横に通す、側方系の入口技。縄内では移動方向と抜け方を作る基礎になります。",
+    description:
+      "側転は、両手を順に着きながら体を横回転で運ぶ基本技です。ダブルダッチでは単なる体操技ではなく、縄の中で横幅、手を着く位置、抜ける方向を覚えるための土台になります。ロンダート、片手側転、エアリアルへ進む前に、手を着く順番と着地足を毎回そろえられるようにします。",
+    originNote:
+      "体操では cartwheel と呼ばれる基礎的な側方回転です。ダブルダッチでは、技名そのものの由来よりも、縄内で横移動しながら手支持を入れるための共通言語として使われます。",
+    practiceSteps: ["線の上で手足が一直線に通るか確認する", "着地足と胸の向きを毎回そろえる", "縄内では入る位置と抜ける位置を先に決める"],
+    commonMistakes: ["手を近くに着きすぎて腰が通らない", "着地で胸が横を向きすぎて次の動きに入れない"],
+    safetyNotes: ["手首と肩に痛みがある日は回数を減らす", "縄内では横幅を取りすぎない位置から入る"],
+    coachComment: "ロンダートやエアリアルへ進む人ほど、側転の手の位置と着地の向きを丁寧にそろえると後が楽です。",
+    tags: ["由来メモあり", "側方入口"],
+    knowledgeStatus: "reviewing"
+  },
+  "ロンダート": {
+    summary: "側転に半ひねりと反発を加え、次の宙返りやバク転へつなぐ接続技。",
+    description:
+      "ロンダートは側転に近い入りから両足着地へまとめ、床を押して次の技へ反発を残す技です。ダブルダッチでは助走距離を長く取れないことが多いため、手を着く位置、腰の通り道、着地で沈まないことが重要です。ロン宙、ロンバク、ロンバク宙の入口として相関図でも中心になります。",
+    originNote:
+      "英語では roundoff と呼ばれ、体操・タンブリングで宙返りの前に反発を作る代表的な接続技として整理されています。日本語のロンダートはこの roundoff 系の呼び名として使われます。",
+    practiceSteps: ["側転の入りから胸を返して両足着地へまとめる", "着地で膝を沈めすぎず、床を押し返す感覚を作る", "次にバク転や宙返りを置く前提で抜け方向を固定する"],
+    commonMistakes: ["手を着く角度が浅く、着地で横に流れる", "反発を作る前に膝が深く曲がってしまう"],
+    safetyNotes: ["首や腰を反って無理に返さない", "ロン宙へ進む前に、単体の着地反発を補助者に確認してもらう"],
+    coachComment: "見た目は側転に近いですが、目的は横に回ることではなく次の技へ力を残すことです。",
+    tags: ["由来メモあり", "接続技", "反発"],
+    knowledgeStatus: "reviewing"
+  },
+  "バク転": {
+    summary: "後方へ手を着いて反発する、後方系アクロの大きな分岐点。",
+    description:
+      "バク転は後方へ跳び、手支持を経由して足で立ち戻る技です。ダブルダッチでは単発でも見せ場になりますが、ロンダート後の反発を受けてロンバク、バク転→バク宙へつなぐ役割が大きくなります。恐怖心が出やすい技なので、補助・マット・段階練習で手の着き方と肩の押しを作ります。",
+    originNote:
+      "英語では back handspring と呼ばれる体操・タンブリング由来の技です。名前の通り、後方へ跳びながら手で床を押して戻る動きとして考えると、バク宙との違いが整理しやすくなります。",
+    practiceSteps: ["ブリッジや後方倒立で肩の可動域を確認する", "補助付きで手を遠くへ着く感覚を作る", "着地後に次の技へ進める姿勢で止まる"],
+    commonMistakes: ["上へ跳べずに後ろへ倒れ込む", "手を近くに着いて肩が詰まる", "着地後に胸が落ちて次の技へ入れない"],
+    safetyNotes: ["首や腰に不安がある日は通さない", "初期練習は必ず補助者とマットを使う"],
+    coachComment: "バク転は勢いよりも、肩で押す時間を作れるかが大事です。怖さが強い時ほど段階を戻してください。",
+    tags: ["由来メモあり", "後方", "補助推奨"],
+    knowledgeStatus: "reviewing"
+  },
+  "ロン宙": {
+    summary: "ロンダートの反発から後方宙返りへ入る、空中系の代表的な到達点。",
+    description:
+      "ロン宙はロンダートで作った反発を使って後方宙返りへ入る技です。ダブルダッチでは演技の山場になりやすい一方、ロンダートの角度、踏切位置、着地後の抜けがそろわないと縄に戻りにくくなります。単体の宙返り能力だけでなく、ロンダートの質を含めて見る技です。",
+    originNote:
+      "日本語のロン宙は、ロンダートから宙返りへつなぐ練習文脈で使われる略称です。英語圏では roundoff back tuck のように、入口技と宙返りの形を組み合わせて呼ぶことが多いです。",
+    practiceSteps: ["ロンダート単体で反発と着地方向を固定する", "補助・マットで後方宙返りの抱え込みを確認する", "縄内では着地後の一歩目まで決めてから入る"],
+    commonMistakes: ["ロンダートの着地で流れて踏切が遅れる", "抱え込みを急ぎすぎて高さが落ちる", "着地後にロープを見る余裕がなくなる"],
+    safetyNotes: ["疲労時に回転量を増やさない", "着地点とターンの位置を共有してから練習する"],
+    coachComment: "ロン宙は宙返りの技というより、ロンダートの反発をどれだけ空中に変換できるかを見る技です。",
+    tags: ["由来メモあり", "後方宙返り", "山場"],
+    knowledgeStatus: "reviewing"
+  },
+  "エアリアル": {
+    summary: "手を着かずに側方回転を通す技。側転の延長で、蹴り上げと着地の向きが鍵になります。",
+    description:
+      "エアリアルは、側転に近い軌道を手支持なしで通す技です。ダブルダッチでは高さよりも、入る角度、蹴り上げ、着地後の流れが見え方を左右します。側転、片手側転、ロンダートとの違いを比較しながら、手を抜く前に腰の通り道を安定させます。",
+    originNote:
+      "英語の aerial は「空中の」という意味を持ち、手を着かない側方系アクロの呼び名として体操やトリッキングで広く使われます。縄内では横幅を取りすぎない aerial として調整することが実用上のポイントです。",
+    practiceSteps: ["側転と片手側転で腰の通り道をそろえる", "蹴り上げ足と着地足を固定する", "縄内では低速で横幅と着地位置を確認する"],
+    commonMistakes: ["手を抜くことだけを急いで腰が落ちる", "蹴り上げ足が横へ逃げて着地がずれる"],
+    safetyNotes: ["初期はマットと補助で着地を確認する", "膝や足首に不安がある日は反復数を抑える"],
+    coachComment: "手を着かない技ですが、練習では手を着く技の精度がそのまま出ます。",
+    tags: ["由来メモあり", "側方", "手なし"],
+    knowledgeStatus: "reviewing"
+  },
+  "バタフライツイスト": {
+    aliases: ["butterfly twist", "b-twist"],
+    summary: "水平に近いバタフライ軌道へひねりを加える、トリッキングらしい見せ技。",
+    description:
+      "バタフライツイストは、バタフライ系の横長い軌道にひねりを加える技です。縦に高く回る宙返りとは違い、胸の向き、肩の巻き込み、着地の流れで形が見えます。ダブルダッチではロープの高さよりも横幅と着地後のリズム復帰を管理すると演技に入れやすくなります。",
+    originNote:
+      "トリッキングでは butterfly setup から発展する代表的なひねり技として扱われます。武術的な蹴りの軌道と体操的な空中姿勢が混ざるため、名前も蝶のような横長い軌道から理解すると覚えやすいです。",
+    practiceSteps: ["バタフライの入りで胸を低く保つ", "ひねり出しを急がず肩と目線をそろえる", "着地後に次のステップへ流す"],
+    commonMistakes: ["縦回転にしようとして軌道が詰まる", "ひねり出しが早すぎて高さと横移動が消える"],
+    safetyNotes: ["首を残したまま無理にひねらない", "滑る床では踏切と着地を避ける"],
+    coachComment: "縄内で使うなら、大きく飛ぶよりも入る角度と着地後の流れを小さく設計する方が映えます。",
+    tags: ["由来メモあり", "水平軌道", "トリッキング"],
+    knowledgeStatus: "reviewing"
+  },
+  "コークスクリュー": {
+    aliases: ["corkscrew", "cork"],
+    summary: "ゲイナー系の斜め回転にひねりを加える高難度トリッキング技。",
+    description:
+      "コークスクリューは、片足踏切やゲイナー系の斜め軌道にひねりを加える技です。縦の宙返りと横のひねりが混ざるため、入る足、胸の向き、着地足を固定してから練習します。ダブルダッチでは見栄えが強い反面、着地後に流れやすいので空間とターン位置の共有が必要です。",
+    originNote:
+      "英語の corkscrew は「らせん状にねじれるもの」を指す語で、トリッキングでは斜め軌道でねじれる見た目から cork と略されることがあります。発祥の厳密な初出は監修時に追記します。",
+    practiceSteps: ["ゲイナーやライズ系の入りを安定させる", "ひねる前に高さと胸の向きを作る", "着地足を決めてから回転量を増やす"],
+    commonMistakes: ["ひねりを急いで踏切の高さがなくなる", "着地足が毎回変わり、次の動きへつながらない"],
+    safetyNotes: ["初回は補助者とマットを使う", "疲労時はひねり量を増やさない"],
+    coachComment: "コークは名前の通りねじれが目立つ技ですが、成功率は入りの足と着地の設計で大きく変わります。",
+    tags: ["由来メモあり", "高難度", "ひねり"],
+    knowledgeStatus: "reviewing"
+  },
+  "マカコ": {
+    aliases: ["monkey flip"],
+    summary: "低い姿勢から片手を後ろに着き、後方へ体を返すカポエイラ由来の移行技。",
+    description:
+      "マカコは、しゃがみに近い低い姿勢から片手を背中側へ着き、もう一方の腕と脚を振って後方へ体を返す技です。バク転に似て見えますが、入りが低く、カポエイラの流れの中では移行や回避の質感を持ちます。ダブルダッチでは床に近いアクセントとして、起き上がりの速さまで含めて練習します。",
+    originNote:
+      "Macaco はポルトガル語で「猿」を意味し、カポエイラでは低い姿勢から後方へ体を返す動きとして知られます。猿が跳ねるような見た目から名前を理解すると、技の質感をつかみやすいです。",
+    practiceSteps: ["片手を背中側に着く位置を確認する", "腰を上げてから脚を越す順番を作る", "着地後にすぐ縄のリズムへ戻る"],
+    commonMistakes: ["先に頭を倒してしまい腰が上がらない", "手を遠くに着きすぎて肩が詰まる"],
+    safetyNotes: ["肩と手首に痛みがある日は避ける", "後方のスペースを確認してから入る"],
+    coachComment: "マカコは派手なバク転の代わりではなく、低さと流れを見せる技として使うと縄内で生きます。",
+    knowledgeSourceUrls: ["https://en.wikipedia.org/wiki/List_of_capoeira_techniques#Macaco"],
+    tags: ["由来メモあり", "カポエイラ", "低姿勢"],
+    knowledgeStatus: "reviewing"
+  },
+  "ヘリコプテイロ": {
+    aliases: ["aú helicóptero", "au helicoptero"],
+    summary: "側転系の反転中に脚を円く入れ替える、ヘリコプターのようなカポエイラ系アクセント。",
+    description:
+      "ヘリコプテイロは、側転に近い反転の中で脚を円く入れ替え、通常の側転とは違う着地順や見え方を作る技です。ダブルダッチでは横幅と脚の円運動が見せ場になりますが、ロープに触れない幅で収める設計が必要です。",
+    originNote:
+      "カポエイラでは Aú helicóptero として、aú の反転中に脚がヘリコプターのように回る動きとして説明されます。名前は見た目の比喩として覚えるとわかりやすいです。",
+    practiceSteps: ["通常の側転で反転のラインをそろえる", "脚の入れ替えだけを低速で確認する", "縄内では横幅と着地位置を小さく決める"],
+    commonMistakes: ["脚を回すことに集中して手の支持が流れる", "横幅が大きくなりすぎてロープに近づく"],
+    safetyNotes: ["手首と肩の支持が崩れる日は避ける", "周囲の人とターン位置を確認してから入る"],
+    coachComment: "ヘリコプテイロは高さよりも脚の円運動の見え方が魅力です。縄内ではコンパクトさが武器になります。",
+    knowledgeSourceUrls: ["https://en.wikipedia.org/wiki/List_of_capoeira_techniques#Other_kicks"],
+    tags: ["由来メモあり", "カポエイラ", "側方"],
+    knowledgeStatus: "reviewing"
+  },
+  "ムーンキック": {
+    aliases: ["kick the moon", "moon kick", "chute na lua"],
+    summary: "ゲイナー系の軌道で脚を月へ蹴り上げるように見せる、トリッキング/カポエイラ接点の技。",
+    description:
+      "ムーンキックは、ゲイナーやフラッシュキックに近い後方・斜めの軌道で、脚を高く蹴り上げながら回る技です。ダブルダッチでは蹴り足の線が見えやすい反面、着地後の流れが乱れやすいので、入りのステップと抜け方を先に決めておきます。",
+    originNote:
+      "英語では Kick the Moon とも呼ばれ、脚を上方向へ蹴り上げる見た目が名前の手がかりになります。カポエイラ文脈では Chute na lua という呼び名も見られ、トリッキングとカポエイラの境界で理解しやすい技です。",
+    practiceSteps: ["ゲイナー系の入りで胸と目線を残す", "蹴り足を曲げずに高く見せる", "着地後に一歩でリズムへ戻る"],
+    commonMistakes: ["蹴り足を急いで回しすぎて形が見えない", "着地が流れて次のステップが遅れる"],
+    safetyNotes: ["腰を反りすぎて痛みが出る場合は中止する", "初期はマット上で着地足を固定する"],
+    coachComment: "蹴り足の線が名前の由来に近い魅力です。縄内では大きさよりも脚の見え方を優先すると使いやすいです。",
+    knowledgeSourceUrls: ["https://en.wikipedia.org/wiki/Moon_kick", "https://en.wikipedia.org/wiki/List_of_capoeira_techniques#Folha_Seca"],
+    tags: ["由来メモあり", "蹴り", "ゲイナー"],
+    knowledgeStatus: "reviewing"
+  },
+  "トーマス": {
+    aliases: ["トーマスフレア", "thomas flair", "flare"],
+    summary: "両脚を開いて円く振り回す床回転。体操のフレアとブレイキン表現をまたぐ技。",
+    description:
+      "トーマスは、手支持で両脚を開きながら円く振り回す床回転系の技です。ダブルダッチでは低い位置で大きな円を作れるため、床面のアクセントとして強い一方、ロープとの距離と手首・肩への負担管理が重要です。",
+    originNote:
+      "体操の pommel horse で知られる Thomas flair の系譜が名前の手がかりです。床で行うフレアはブレイキンのパワームーブとも接点があり、ダブルダッチでは床回転の見せ方として取り入れられます。",
+    practiceSteps: ["開脚のまま腰を落とさず支持する", "片周ごとに手を置く位置を確認する", "縄内では回転幅を測ってから入る"],
+    commonMistakes: ["脚を大きく見せようとして腰が落ちる", "手の置き換えが遅れて回転が止まる"],
+    safetyNotes: ["手首、肩、股関節のウォームアップを十分に行う", "ロープとの距離を確保してから通す"],
+    coachComment: "トーマスは回数よりも一周の形が大事です。縄内では半周でも見え方が強いので、無理に回数を増やさなくて大丈夫です。",
+    knowledgeSourceUrls: ["https://www.gymnastics.sport/site/news/displaynews.php?idNews=2903"],
+    tags: ["由来メモあり", "床回転", "パワームーブ"],
+    knowledgeStatus: "reviewing"
+  },
+  "1990": {
+    aliases: ["ナインティーンナインティ", "one hand spin"],
+    summary: "片手倒立に近い形で縦軸回転する、ブレイキンの高難度パワームーブ。",
+    description:
+      "1990は、倒立に近い縦軸で片手回転へ入るブレイキン系の技です。ダブルダッチでは非常に強い見せ場になりますが、手首・肩・首への負担が大きく、床面とロープ幅の条件がそろった場面で扱う技です。",
+    originNote:
+      "ブレイキンでは 1990s / 2000s といった呼び名で、倒立系スピンのバリエーションとして知られています。名前の細かな由来には複数の語られ方があるため、ここでは高難度の handstand spin 系として整理しています。",
+    practiceSteps: ["倒立支持と片手荷重を分けて作る", "低い回転練習で手首の負担を確認する", "縄内では回転場所と抜け方を固定する"],
+    commonMistakes: ["片手へ乗る前に腰が折れる", "回転数を急いで支持手が流れる"],
+    safetyNotes: ["手首、肩、首に違和感がある日は行わない", "十分な床スペースと補助者を確保する"],
+    coachComment: "1990はチェックを埋めるために急ぐ技ではありません。倒立支持の質と安全条件がそろってから扱う高難度枠です。",
+    knowledgeSourceUrls: ["https://en.wikipedia.org/wiki/Spin_(breakdancing_move)"],
+    tags: ["由来メモあり", "倒立回転", "高難度"],
+    knowledgeStatus: "reviewing"
+  }
+};
+
+function mergeUnique(values: string[]) {
+  return Array.from(new Set(values.filter((value) => value.trim().length > 0)));
+}
+
+function applyKnowledgeOverride(trick: Trick): Trick {
+  const override = knowledgeOverrides[trick.name];
+  if (!override) return trick;
+
+  return {
+    ...trick,
+    ...override,
+    aliases: mergeUnique([...(trick.aliases ?? []), ...(override.aliases ?? [])]),
+    tags: mergeUnique([...(trick.tags ?? []), ...(override.tags ?? [])]),
+    knowledgeSourceUrls: mergeUnique([...(trick.knowledgeSourceUrls ?? []), ...(override.knowledgeSourceUrls ?? [])])
+  };
+}
+
 function clampLevel(value: number): Trick["difficulty"] {
   return Math.max(1, Math.min(5, value)) as Trick["difficulty"];
 }
@@ -238,7 +444,7 @@ export function getAllTricks(): Trick[] {
       const family = deriveFamily(name);
       const discipline = deriveDiscipline(name, family);
       const axis = deriveAxis(name);
-      const trick: Trick = {
+      const trick = applyKnowledgeOverride({
         id: `trick-${String(historicIndex + 1).padStart(3, "0")}`,
         slug: slugFor(historicIndex, name),
         name,
@@ -268,7 +474,7 @@ export function getAllTricks(): Trick[] {
         status: "published",
         sourceId: level.sourceId,
         showSource: false
-      };
+      });
 
       seen.set(name, trick);
       visibleIndex += 1;

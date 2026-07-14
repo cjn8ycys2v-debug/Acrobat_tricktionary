@@ -39,7 +39,7 @@ export default async function TrickDetailPage({
         技図鑑に戻る
       </Link>
       <div className="grid gap-6 lg:grid-cols-[1.15fr_.85fr]">
-        <section className="rounded border border-ink/10 bg-white p-4 shadow-sm sm:p-6">
+        <section className="min-w-0 rounded border border-ink/10 bg-white p-4 shadow-sm sm:p-6">
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <span className="rounded bg-pine px-3 py-1 text-sm font-black text-white">Lv.{trick.level}</span>
             <span className="rounded bg-saffron/18 px-3 py-1 text-sm font-bold text-graphite">{trick.levelCategory}</span>
@@ -50,7 +50,7 @@ export default async function TrickDetailPage({
           {trick.aliases.length ? (
             <div className="mt-3 flex flex-wrap gap-2">
               {trick.aliases.map((alias) => (
-                <span key={alias} className="rounded border border-ink/10 bg-paper px-2.5 py-1 text-xs font-black text-graphite">
+                <span key={alias} className="max-w-full shrink-0 break-all rounded border border-ink/10 bg-paper px-2.5 py-1 text-xs font-black text-graphite">
                   別名: {alias}
                 </span>
               ))}
@@ -122,7 +122,7 @@ export default async function TrickDetailPage({
           ) : null}
         </section>
 
-        <aside className="grid gap-4 sm:gap-5">
+        <aside className="grid min-w-0 gap-4 sm:gap-5">
           <section className="rounded border border-ink/10 bg-ink p-4 text-white shadow-sm sm:p-5">
             {primaryVideo ? (
               <VideoPanel asset={primaryVideo} />
