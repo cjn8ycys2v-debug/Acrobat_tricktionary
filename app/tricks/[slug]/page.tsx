@@ -1,6 +1,19 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, BookOpenText, ClipboardList, ExternalLink, GitBranch, Lightbulb, PlayCircle, ShieldAlert, TriangleAlert, type LucideIcon } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  BookOpenText,
+  ClipboardList,
+  ExternalLink,
+  GitBranch,
+  Lightbulb,
+  PlayCircle,
+  Route,
+  ShieldAlert,
+  TriangleAlert,
+  type LucideIcon
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { MasteryToggle } from "@/components/MasteryToggle";
 import { MetricDots } from "@/components/MetricDots";
@@ -27,6 +40,8 @@ export default async function TrickDetailPage({
 
   const incoming = atlas.relations.filter((relation) => relation.toTrickId === trick.id);
   const outgoing = atlas.relations.filter((relation) => relation.fromTrickId === trick.id);
+  const learningIncoming = incoming.filter(isLearningRelation);
+  const learningOutgoing = outgoing.filter(isLearningRelation);
   const mediaAssets = atlas.mediaAssets.filter((asset) => asset.trickId === trick.id && asset.type === "video");
   const primaryVideo = mediaAssets.find((asset) => asset.storagePath.trim() && asset.consentChecked);
   const source = trick.showSource ? atlas.sources.find((item) => item.id === trick.sourceId) : undefined;
@@ -78,6 +93,7 @@ export default async function TrickDetailPage({
             <Info label="着地" value={trick.landing} />
             <Info label="縄文脈" value={trick.ropeContext} />
           </div>
+          <LearningRoute trick={trick} incoming={learningIncoming} outgoing={learningOutgoing} tricks={atlas.tricks} />
           <p className="mt-6 leading-8 text-graphite">{trick.description}</p>
           {(disciplineGuide || familyGuide) ? (
             <div className="mt-7 grid gap-3 border-t border-ink/8 pt-6 sm:grid-cols-2">
@@ -157,6 +173,87 @@ export default async function TrickDetailPage({
   );
 }
 
+function LearningRoute({
+  trick,
+  incoming,
+  outgoing,
+  tricks
+}: {
+  trick: Trick;
+  incoming: TrickRelation[];
+  outgoing: TrickRelation[];
+  tricks: Trick[];
+}) {
+  const before = pickRouteTricks(incoming, "incoming", tricks);
+  const after = pickRouteTricks(outgoing, "outgoing", tricks);
+  if (!before.length && !after.length) return null;
+
+  return (
+    <section className="mt-6 rounded border border-pine/18 bg-skywash p-3 sm:p-4">
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="flex items-center gap-2 text-sm font-black text-ink">
+          <Route aria-hidden className="size-4 text-pine" />
+          練習ルート
+        </h2>
+        <Link
+          href={`/map?trick=${encodeURIComponent(trick.slug)}`}
+          className="inline-flex h-8 items-center justify-center gap-1.5 rounded border border-pine/25 bg-white px-2.5 text-xs font-black text-pine transition hover:bg-pine hover:text-white"
+        >
+          全体を見る
+          <ArrowRight aria-hidden className="size-3.5" />
+        </Link>
+      </div>
+      <div className="grid gap-2 md:grid-cols-[1fr_auto_1fr_auto_1fr] md:items-stretch">
+        <RouteColumn label="先に確認" empty="前提技は未登録です" items={before} />
+        <RouteArrow />
+        <div className="rounded border border-ink/12 bg-white p-3">
+          <p className="text-[11px] font-black text-pine">今の技</p>
+          <p className="mt-1 text-base font-black leading-6 text-ink">{trick.name}</p>
+          <p className="mt-1 text-xs font-semibold leading-5 text-graphite/68">
+            Lv.{trick.level} / {trick.family} / {trick.ropeContext}
+          </p>
+        </div>
+        <RouteArrow />
+        <RouteColumn label="次候補" empty="派生技は未登録です" items={after} />
+      </div>
+    </section>
+  );
+}
+
+function RouteColumn({ label, empty, items }: { label: string; empty: string; items: RouteItem[] }) {
+  return (
+    <div className="rounded border border-ink/10 bg-white p-3">
+      <p className="text-[11px] font-black text-graphite/58">{label}</p>
+      <div className="mt-2 grid gap-2">
+        {items.length ? (
+          items.map((item) => (
+            <Link
+              key={`${label}-${item.relation.id}`}
+              href={`/tricks/${item.trick.slug}`}
+              className="rounded border border-ink/8 bg-paper px-3 py-2 transition hover:border-pine hover:bg-skywash"
+            >
+              <span className="block text-sm font-black leading-5 text-ink">{item.trick.name}</span>
+              <span className="mt-1 block text-[11px] font-bold text-pine">
+                {relationLabel(item.relation.type)} / 強さ {item.relation.strength}
+              </span>
+            </Link>
+          ))
+        ) : (
+          <p className="rounded bg-paper px-3 py-2 text-xs font-semibold leading-5 text-graphite/64">{empty}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RouteArrow() {
+  return (
+    <div className="hidden place-items-center text-pine md:grid">
+      <ArrowRight aria-hidden className="size-5" />
+    </div>
+  );
+}
+
 function TaxonomyGuideBlock({ title, guide }: { title: string; guide: TaxonomyGuide }) {
   return (
     <section className="rounded border border-ink/10 bg-paper p-4">
@@ -174,6 +271,27 @@ function TaxonomyGuideBlock({ title, guide }: { title: string; guide: TaxonomyGu
       </dl>
     </section>
   );
+}
+
+type RouteItem = {
+  relation: TrickRelation;
+  trick: Trick;
+};
+
+function pickRouteTricks(relations: TrickRelation[], direction: "incoming" | "outgoing", tricks: Trick[]): RouteItem[] {
+  return relations
+    .map((relation) => {
+      const relatedId = direction === "incoming" ? relation.fromTrickId : relation.toTrickId;
+      const related = tricks.find((candidate) => candidate.id === relatedId);
+      return related ? { relation, trick: related } : null;
+    })
+    .filter((item): item is RouteItem => Boolean(item))
+    .sort((a, b) => b.relation.strength - a.relation.strength || a.trick.level - b.trick.level || a.trick.name.localeCompare(b.trick.name, "ja"))
+    .slice(0, 3);
+}
+
+function isLearningRelation(relation: TrickRelation) {
+  return relation.type === "prerequisite" || relation.type === "progression";
 }
 
 function KnowledgeReviewBadge({ trick }: { trick: Trick }) {
