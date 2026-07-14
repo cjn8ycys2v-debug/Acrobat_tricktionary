@@ -46,7 +46,7 @@ textarea {
 .hero-image {
   background-image:
     linear-gradient(90deg, rgba(23, 32, 38, 0.76), rgba(23, 32, 38, 0.36), rgba(23, 32, 38, 0.12)),
-    url("/double-dutch-acro-hero.png");
+    var(--hero-image-url);
   background-position: center;
   background-size: cover;
 }

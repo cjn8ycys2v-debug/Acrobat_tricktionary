@@ -9,10 +9,15 @@ export default async function TricksPage() {
   const published = atlas.tricks.filter((trick) => trick.status === "published");
   const seedFeaturedNames = new Set(getFeaturedTricks().map((trick) => trick.name));
   const featured = published.filter((trick) => seedFeaturedNames.has(trick.name)).slice(0, 6);
+  const basePath = normalizeBasePath(process.env.NEXT_PUBLIC_BASE_PATH);
+  const heroImageUrl = `${basePath}/double-dutch-acro-hero.png`;
 
   return (
     <main>
-      <section className="hero-image">
+      <section
+        className="hero-image"
+        style={{ "--hero-image-url": `url("${heroImageUrl}")` } as React.CSSProperties}
+      >
         <div className="mx-auto flex min-h-[340px] max-w-7xl flex-col justify-end px-3 pb-16 pt-10 sm:min-h-[380px] sm:px-6 sm:pb-20 sm:pt-14 lg:px-8">
           <div className="max-w-3xl text-white">
             <div className="mb-4 inline-flex items-center gap-2 rounded bg-white/16 px-3 py-1 text-sm font-bold backdrop-blur">
@@ -51,6 +56,14 @@ export default async function TricksPage() {
       </section>
     </main>
   );
+}
+
+function normalizeBasePath(value: string | undefined) {
+  if (!value) return "";
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === "/") return "";
+  const withLeadingSlash = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  return withLeadingSlash.replace(/\/+$/, "");
 }
 
 function Metric({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {

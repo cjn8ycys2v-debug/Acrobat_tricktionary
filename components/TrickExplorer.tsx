@@ -234,8 +234,8 @@ export function TrickExplorer({ tricks, options }: Props) {
   useEffect(() => {
     if (!urlReady) return;
     const nextPath = explorerSearch ? `/tricks?${explorerSearch}` : "/tricks";
-    const currentPath = `${window.location.pathname}${window.location.search}`;
-    if (currentPath !== nextPath) window.history.replaceState(null, "", nextPath);
+    const currentPath = `${stripBasePath(window.location.pathname)}${window.location.search}`;
+    if (currentPath !== nextPath) window.history.replaceState(null, "", withBasePath(nextPath));
   }, [explorerSearch, urlReady]);
 
   function resetFilters() {
@@ -533,6 +533,28 @@ function makeExplorerSearch({
   if (tag !== allValue) params.set("tag", tag);
   if (sort !== "level") params.set("sort", sort);
   return params.toString();
+}
+
+function withBasePath(path: string) {
+  const basePath = normalizeBasePath(process.env.NEXT_PUBLIC_BASE_PATH);
+  if (!basePath || !path.startsWith("/")) return path;
+  return `${basePath}${path}`;
+}
+
+function stripBasePath(pathname: string) {
+  const basePath = normalizeBasePath(process.env.NEXT_PUBLIC_BASE_PATH);
+  if (!basePath) return pathname;
+  if (pathname === basePath) return "/";
+  if (pathname.startsWith(`${basePath}/`)) return pathname.slice(basePath.length);
+  return pathname;
+}
+
+function normalizeBasePath(value: string | undefined) {
+  if (!value) return "";
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === "/") return "";
+  const withLeadingSlash = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  return withLeadingSlash.replace(/\/+$/, "");
 }
 
 function readOption(params: URLSearchParams, key: string, values: string[], fallback = allValue) {

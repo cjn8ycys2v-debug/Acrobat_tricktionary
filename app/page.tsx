@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import TricksPage from "@/app/tricks/page";
 
-export default function HomePage() {
-  redirect("/tricks");
+export default async function HomePage() {
+  return <TricksPage />;
 }
