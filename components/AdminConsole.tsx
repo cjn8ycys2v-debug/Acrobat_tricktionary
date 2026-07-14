@@ -40,6 +40,7 @@ type Props = {
 
 type AdminSection = "tricks" | "knowledge" | "videos" | "relations" | "layout" | "status";
 type VideoWorkflowKind = "ready" | "needsPublishUrl" | "needsConsent" | "empty";
+type VideoCoverageKind = VideoWorkflowKind | "missing";
 
 type KnowledgePatch = Partial<
   Pick<
@@ -1309,6 +1310,8 @@ function VideoBulkEditor({
   const [videoText, setVideoText] = useState(() => exportVideoRows(mediaAssets, new Map(tricks.map((trick) => [trick.id, trick]))));
 
   const videoAssets = useMemo(() => mediaAssets.filter((asset) => asset.type === "video"), [mediaAssets]);
+  const coverageTargets = useMemo(() => makeVideoCoverageTargets(tricks, videoAssets), [tricks, videoAssets]);
+  const missingCoverageCount = coverageTargets.filter((target) => target.kind === "missing").length;
   const videoStats = useMemo(
     () => ({
       ready: videoAssets.filter((asset) => videoWorkflowState(asset).kind === "ready").length,
@@ -1397,6 +1400,22 @@ function VideoBulkEditor({
       });
   }, [query, stateFilter, trickById, videoAssets]);
 
+  async function copyVideoCoveragePlan(onlyMissing: boolean) {
+    const targets = onlyMissing ? coverageTargets.filter((target) => target.kind === "missing") : coverageTargets;
+    const text = makeVideoCoveragePlan(targets);
+    if (!text) {
+      onMessage("コピーできる優先動画リストがありません。");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      onMessage(`${targets.length}件の優先動画リストをコピーしました。参考URLと秒数を埋めて動画台帳へ移してください。`);
+    } catch {
+      onMessage("ブラウザの権限でコピーできませんでした。優先動画リストを画面から手動で写してください。");
+    }
+  }
+
   function syncTextFromCurrent() {
     setVideoText(exportVideoRows(mediaAssets, trickById));
     onMessage("現在の動画台帳をテキスト欄へ反映しました。");
@@ -1473,6 +1492,54 @@ function VideoBulkEditor({
       </div>
 
       <p className="mb-3 rounded bg-paper px-3 py-2 text-xs font-semibold text-graphite/72">{message}</p>
+
+      <div className="mb-4 rounded border border-ink/10 bg-paper p-3 sm:p-4">
+        <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h3 className="text-sm font-black text-ink">優先動画リスト</h3>
+            <p className="mt-1 max-w-2xl text-xs font-semibold leading-5 text-graphite/70">
+              まず揃えると図鑑の価値が上がる技です。参考URLと秒数を集め、自分で撮影または許諾済み動画を限定公開にしてから公開用URLへ移します。
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <button
+              type="button"
+              onClick={() => copyVideoCoveragePlan(true)}
+              className="inline-flex min-h-9 items-center justify-center gap-2 rounded border border-ink/14 bg-white px-3 text-xs font-black text-graphite transition hover:border-coral hover:text-coral"
+            >
+              <Copy aria-hidden className="size-3.5" />
+              未着手をコピー
+            </button>
+            <button
+              type="button"
+              onClick={() => copyVideoCoveragePlan(false)}
+              className="inline-flex min-h-9 items-center justify-center gap-2 rounded border border-pine bg-white px-3 text-xs font-black text-pine transition hover:bg-pine hover:text-white"
+            >
+              <Copy aria-hidden className="size-3.5" />
+              全リストをコピー
+            </button>
+          </div>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          {coverageTargets.map((target, index) => (
+            <div key={target.trick.id} className="rounded border border-ink/8 bg-white px-3 py-2">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-black text-ink">
+                    {index + 1}. {target.trick.name}
+                  </p>
+                  <p className="mt-0.5 text-xs font-semibold text-graphite/60">
+                    Lv.{target.trick.level} / {target.trick.discipline} / {target.trick.family}
+                  </p>
+                </div>
+                <span className={`shrink-0 rounded border px-2 py-1 text-[10px] font-black ${target.className}`}>{target.label}</span>
+              </div>
+              <p className="mt-2 text-xs font-semibold leading-5 text-graphite/68">{target.action}</p>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 text-xs font-bold text-graphite/62">未着手 {missingCoverageCount} / {coverageTargets.length} 件</p>
+      </div>
 
       <div className="mb-4 grid gap-2 lg:grid-cols-4">
         {videoQueue.map((group) => (
@@ -1894,6 +1961,106 @@ function videoWorkflowState(asset: MediaAsset) {
     label: "未指定",
     className: "border-ink/10 bg-white text-graphite/70"
   };
+}
+
+const starterVideoTargetNames = [
+  "ロンダート",
+  "バク転",
+  "ロン宙",
+  "前宙",
+  "ウェブスター",
+  "ハンドスプリング",
+  "エアリアル",
+  "バタフライツイスト",
+  "ライズ",
+  "540",
+  "フラッシュキック",
+  "ムーンキック",
+  "ウインドミル",
+  "トーマス",
+  "マカコ",
+  "ヘリコプテイロ",
+  "コークスクリュー",
+  "1990",
+  "側転",
+  "ロンバク"
+];
+
+function makeVideoCoverageTargets(tricks: Trick[], videoAssets: MediaAsset[]) {
+  const videosByTrickId = new Map<string, MediaAsset[]>();
+  for (const asset of videoAssets) {
+    if (!videosByTrickId.has(asset.trickId)) videosByTrickId.set(asset.trickId, []);
+    videosByTrickId.get(asset.trickId)?.push(asset);
+  }
+
+  return starterVideoTargetNames
+    .map((name) => tricks.find((trick) => trick.name === name))
+    .filter((trick): trick is Trick => Boolean(trick))
+    .map((trick) => {
+      const videos = videosByTrickId.get(trick.id) ?? [];
+      const state = videoCoverageState(videos);
+      return {
+        trick,
+        videos,
+        ...state
+      };
+    });
+}
+
+function videoCoverageState(videos: MediaAsset[]): { kind: VideoCoverageKind; label: string; action: string; className: string } {
+  if (!videos.length) {
+    return {
+      kind: "missing",
+      label: "未着手",
+      action: "参考URLと秒数を探して動画台帳へ追加",
+      className: "border-ink/12 bg-paper text-graphite"
+    };
+  }
+  if (videos.some((asset) => videoWorkflowState(asset).kind === "ready")) {
+    return {
+      kind: "ready",
+      label: "埋め込みOK",
+      action: "技詳細で再生と表示を確認",
+      className: "border-pine/25 bg-skywash text-pine"
+    };
+  }
+  if (videos.some((asset) => videoWorkflowState(asset).kind === "needsConsent")) {
+    return {
+      kind: "needsConsent",
+      label: "確認待ち",
+      action: "公開利用できる素材か確認",
+      className: "border-saffron/45 bg-saffron/12 text-graphite"
+    };
+  }
+  if (videos.some((asset) => videoWorkflowState(asset).kind === "needsPublishUrl")) {
+    return {
+      kind: "needsPublishUrl",
+      label: "再アップ待ち",
+      action: "自分の限定公開URLへ差し替え",
+      className: "border-coral/30 bg-coral/8 text-coral"
+    };
+  }
+  return {
+    kind: "empty",
+    label: "未指定",
+    action: "参考URLまたは公開用URLを追加",
+    className: "border-ink/10 bg-white text-graphite/70"
+  };
+}
+
+function makeVideoCoveragePlan(targets: ReturnType<typeof makeVideoCoverageTargets>) {
+  return targets
+    .map((target, index) => {
+      const rowTemplate = `${target.trick.name} | [参考URL] | [開始秒] | [終了秒] | [自分の限定公開URL] |  |  | 優先動画${index + 1}: ${target.action}`;
+      return [
+        `${index + 1}. ${target.trick.name}`,
+        `状態: ${target.label}`,
+        `分類: Lv.${target.trick.level} / ${target.trick.discipline} / ${target.trick.family}`,
+        `見せたい要点: ${target.trick.summary}`,
+        `動画台帳行（[]を埋めてから貼る）: ${rowTemplate}`
+      ].join("\n");
+    })
+    .join("\n\n---\n\n");
 }
 
 function videoWorkflowNextAction(asset: MediaAsset) {
