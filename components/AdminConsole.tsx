@@ -1416,6 +1416,17 @@ function VideoBulkEditor({
     }
   }
 
+  function appendVideoCoverageRows(targets: ReturnType<typeof makeVideoCoverageTargets>, scope: string) {
+    if (!targets.length) {
+      onMessage("台帳へ追加できる優先動画はありません。");
+      return;
+    }
+
+    const rows = targets.map(makeVideoLedgerRow);
+    setVideoText((current) => appendRows(current, rows));
+    onMessage(`${scope} ${targets.length}件の台帳行を追加しました。参考URLと秒数を埋めてから画面に反映してください。`);
+  }
+
   function syncTextFromCurrent() {
     setVideoText(exportVideoRows(mediaAssets, trickById));
     onMessage("現在の動画台帳をテキスト欄へ反映しました。");
@@ -1504,6 +1515,14 @@ function VideoBulkEditor({
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             <button
               type="button"
+              onClick={() => appendVideoCoverageRows(coverageTargets.filter((target) => target.kind === "missing"), "未着手")}
+              className="inline-flex min-h-9 items-center justify-center gap-2 rounded border border-coral/40 bg-white px-3 text-xs font-black text-coral transition hover:border-coral hover:bg-coral/8"
+            >
+              <Plus aria-hidden className="size-3.5" />
+              未着手を台帳へ
+            </button>
+            <button
+              type="button"
               onClick={() => copyVideoCoveragePlan(true)}
               className="inline-flex min-h-9 items-center justify-center gap-2 rounded border border-ink/14 bg-white px-3 text-xs font-black text-graphite transition hover:border-coral hover:text-coral"
             >
@@ -1535,6 +1554,14 @@ function VideoBulkEditor({
                 <span className={`shrink-0 rounded border px-2 py-1 text-[10px] font-black ${target.className}`}>{target.label}</span>
               </div>
               <p className="mt-2 text-xs font-semibold leading-5 text-graphite/68">{target.action}</p>
+              <button
+                type="button"
+                onClick={() => appendVideoCoverageRows([target], target.trick.name)}
+                className="mt-2 inline-flex min-h-8 items-center gap-1.5 rounded border border-ink/10 bg-paper px-2 text-[11px] font-black text-graphite transition hover:border-pine hover:text-pine"
+              >
+                <Plus aria-hidden className="size-3.5" />
+                台帳へ
+              </button>
             </div>
           ))}
         </div>
@@ -2061,6 +2088,15 @@ function makeVideoCoveragePlan(targets: ReturnType<typeof makeVideoCoverageTarge
       ].join("\n");
     })
     .join("\n\n---\n\n");
+}
+
+function makeVideoLedgerRow(target: ReturnType<typeof makeVideoCoverageTargets>[number]) {
+  return `${target.trick.name} |  |  |  |  |  |  | 優先動画: ${target.action}`;
+}
+
+function appendRows(current: string, rows: string[]) {
+  const trimmed = current.trimEnd();
+  return `${trimmed}${trimmed ? "\n" : ""}${rows.join("\n")}`;
 }
 
 function videoWorkflowNextAction(asset: MediaAsset) {
