@@ -100,6 +100,7 @@ export function TrickExplorer({ tricks, options }: Props) {
     }),
     [tricks]
   );
+  const knowledgeProgress = Math.round((knowledgeStats.enriched / Math.max(1, tricks.length)) * 100);
 
   const disciplineStats = useMemo(
     () =>
@@ -391,6 +392,55 @@ export function TrickExplorer({ tricks, options }: Props) {
                 解除
               </button>
             ) : null}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 rounded border border-pine/14 bg-white p-3 shadow-sm sm:p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <p className="flex items-center gap-2 text-sm font-black text-ink">
+              <BookOpenText aria-hidden className="size-4 text-pine" />
+              知識メモ進捗
+            </p>
+            <p className="mt-1 max-w-2xl text-xs font-semibold leading-5 text-graphite/68">
+              由来、練習ステップ、失敗例、安全注意まで読める技を増やしています。未補強から順に埋めると図鑑の厚みが見えてきます。
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+            <KnowledgeSummaryAction
+              label="読める技"
+              value="enriched"
+              current={knowledge}
+              count={knowledgeStats.enriched}
+              total={tricks.length}
+              onChange={setKnowledge}
+            />
+            <KnowledgeSummaryAction
+              label="未補強"
+              value="draft"
+              current={knowledge}
+              count={knowledgeStats.draft}
+              total={tricks.length}
+              onChange={setKnowledge}
+            />
+            <KnowledgeSummaryAction
+              label="参考あり"
+              value="sources"
+              current={knowledge}
+              count={knowledgeStats.sources}
+              total={tricks.length}
+              onChange={setKnowledge}
+            />
+          </div>
+        </div>
+        <div className="mt-3">
+          <div className="mb-1 flex items-center justify-between gap-3 text-xs font-black text-graphite/66">
+            <span>補強済み {knowledgeStats.enriched} / {tricks.length} 技</span>
+            <span>{knowledgeProgress}%</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded bg-paper">
+            <div className="h-full rounded bg-pine transition-[width]" style={{ width: `${knowledgeProgress}%` }} />
           </div>
         </div>
       </div>
@@ -699,6 +749,37 @@ function KnowledgeFilterButton({
       {active ? <CheckCircle2 aria-hidden className="size-3.5 shrink-0" /> : <Clock aria-hidden className="size-3.5 shrink-0" />}
       <span>{label}</span>
       <span className={`rounded px-1.5 py-0.5 text-[10px] ${active ? "bg-white/18 text-white" : "bg-paper text-graphite/68"}`}>{count}</span>
+    </button>
+  );
+}
+
+function KnowledgeSummaryAction({
+  label,
+  value,
+  current,
+  count,
+  total,
+  onChange
+}: {
+  label: string;
+  value: string;
+  current: string;
+  count: number;
+  total: number;
+  onChange: (value: string) => void;
+}) {
+  const active = current === value;
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(active ? allValue : value)}
+      className={`rounded border px-3 py-2 text-left transition ${
+        active ? "border-pine bg-pine text-white" : "border-ink/10 bg-paper text-ink hover:border-pine/45 hover:bg-skywash"
+      }`}
+    >
+      <span className={`block text-[10px] font-black ${active ? "text-white/72" : "text-graphite/58"}`}>{label}</span>
+      <span className="mt-1 block text-lg font-black leading-none">{count}</span>
+      <span className={`mt-1 block text-[10px] font-bold ${active ? "text-white/70" : "text-graphite/55"}`}>/ {total} 技</span>
     </button>
   );
 }
