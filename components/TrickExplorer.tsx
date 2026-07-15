@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Activity, Compass, Filter, GitBranch, Map, Search, ShieldAlert, SlidersHorizontal, Waypoints, X } from "lucide-react";
+import { Activity, BookOpenText, CheckCircle2, Clock, Compass, Filter, GitBranch, Map, Search, ShieldAlert, SlidersHorizontal, Waypoints, X } from "lucide-react";
 import type { Trick } from "@/lib/types";
 import { TrickCard } from "@/components/TrickCard";
 import { disciplineDescriptions, disciplineGuides, familyGuides } from "@/lib/taxonomy";
@@ -23,6 +23,7 @@ type Props = {
 };
 
 const allValue = "all";
+const knowledgeFilterValues = ["enriched", "reviewing", "reviewed", "draft", "sources"] as const;
 
 type PresetCriteria = Partial<Pick<Trick, "discipline" | "family" | "ropeContext">> & {
   tag?: string;
@@ -37,6 +38,7 @@ export function TrickExplorer({ tricks, options }: Props) {
   const [difficulty, setDifficulty] = useState(allValue);
   const [risk, setRisk] = useState(allValue);
   const [tag, setTag] = useState(allValue);
+  const [knowledge, setKnowledge] = useState(allValue);
   const [sort, setSort] = useState("level");
   const [urlReady, setUrlReady] = useState(false);
 
@@ -76,7 +78,8 @@ export function TrickExplorer({ tricks, options }: Props) {
           (ropeContext === allValue || trick.ropeContext === ropeContext) &&
           (difficulty === allValue || String(trick.difficulty) === difficulty) &&
           (risk === allValue || String(trick.riskLevel) === risk) &&
-          (tag === allValue || trick.tags.includes(tag))
+          (tag === allValue || trick.tags.includes(tag)) &&
+          matchesKnowledgeFilter(trick, knowledge)
         );
       })
       .sort((a, b) => {
@@ -85,7 +88,18 @@ export function TrickExplorer({ tricks, options }: Props) {
         if (sort === "name") return a.name.localeCompare(b.name, "ja");
         return a.level - b.level || a.name.localeCompare(b.name, "ja");
       });
-  }, [axis, difficulty, discipline, family, query, risk, ropeContext, sort, tag, tricks]);
+  }, [axis, difficulty, discipline, family, knowledge, query, risk, ropeContext, sort, tag, tricks]);
+
+  const knowledgeStats = useMemo(
+    () => ({
+      enriched: tricks.filter((trick) => trick.tags.includes("由来メモあり")).length,
+      reviewing: tricks.filter((trick) => trick.knowledgeStatus === "reviewing").length,
+      reviewed: tricks.filter((trick) => trick.knowledgeStatus === "reviewed").length,
+      draft: tricks.filter((trick) => trick.knowledgeStatus === "draft").length,
+      sources: tricks.filter((trick) => trick.knowledgeSourceUrls.length > 0).length
+    }),
+    [tricks]
+  );
 
   const disciplineStats = useMemo(
     () =>
@@ -199,12 +213,13 @@ export function TrickExplorer({ tricks, options }: Props) {
       ropeContext !== allValue ||
       difficulty !== allValue ||
       risk !== allValue ||
-      tag !== allValue
+      tag !== allValue ||
+      knowledge !== allValue
   );
   const mapHref = makeMapHref({ query, discipline, family });
   const explorerSearch = useMemo(
-    () => makeExplorerSearch({ query, discipline, family, axis, ropeContext, difficulty, risk, tag, sort }),
-    [axis, difficulty, discipline, family, query, risk, ropeContext, sort, tag]
+    () => makeExplorerSearch({ query, discipline, family, axis, ropeContext, difficulty, risk, tag, knowledge, sort }),
+    [axis, difficulty, discipline, family, knowledge, query, risk, ropeContext, sort, tag]
   );
   const returnHref = explorerSearch ? `/tricks?${explorerSearch}` : "/tricks";
 
@@ -217,6 +232,7 @@ export function TrickExplorer({ tricks, options }: Props) {
     const nextDifficulty = readOption(params, "difficulty", ["1", "2", "3", "4", "5"]);
     const nextRisk = readOption(params, "risk", ["1", "2", "3", "4", "5"]);
     const nextTag = readOption(params, "tag", options.tags);
+    const nextKnowledge = readOption(params, "knowledge", [...knowledgeFilterValues]);
     const nextSort = readOption(params, "sort", ["level", "difficulty", "risk", "name"], "level");
 
     setQuery((params.get("q") ?? "").trim());
@@ -227,6 +243,7 @@ export function TrickExplorer({ tricks, options }: Props) {
     setDifficulty(nextDifficulty);
     setRisk(nextRisk);
     setTag(nextTag);
+    setKnowledge(nextKnowledge);
     setSort(nextSort);
     setUrlReady(true);
   }, [options.axes, options.disciplines, options.families, options.ropeContexts, options.tags]);
@@ -247,6 +264,7 @@ export function TrickExplorer({ tricks, options }: Props) {
     setDifficulty(allValue);
     setRisk(allValue);
     setTag(allValue);
+    setKnowledge(allValue);
     setSort("level");
   }
 
@@ -259,6 +277,7 @@ export function TrickExplorer({ tricks, options }: Props) {
     setDifficulty(allValue);
     setRisk(allValue);
     setTag(criteria.tag ?? allValue);
+    setKnowledge(allValue);
     setSort("level");
   }
 
@@ -303,6 +322,49 @@ export function TrickExplorer({ tricks, options }: Props) {
                 </option>
               ))}
             </select>
+          </div>
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-2 text-sm font-bold text-graphite">
+              <BookOpenText aria-hidden className="size-4 text-pine" />
+              知識メモ
+            </span>
+            <div className="flex max-w-full flex-wrap gap-2">
+              <KnowledgeFilterButton
+                label="由来あり"
+                value="enriched"
+                current={knowledge}
+                count={knowledgeStats.enriched}
+                onChange={setKnowledge}
+              />
+              <KnowledgeFilterButton
+                label="監修中"
+                value="reviewing"
+                current={knowledge}
+                count={knowledgeStats.reviewing}
+                onChange={setKnowledge}
+              />
+              <KnowledgeFilterButton
+                label="監修済み"
+                value="reviewed"
+                current={knowledge}
+                count={knowledgeStats.reviewed}
+                onChange={setKnowledge}
+              />
+              <KnowledgeFilterButton
+                label="未補強"
+                value="draft"
+                current={knowledge}
+                count={knowledgeStats.draft}
+                onChange={setKnowledge}
+              />
+              <KnowledgeFilterButton
+                label="参考あり"
+                value="sources"
+                current={knowledge}
+                count={knowledgeStats.sources}
+                onChange={setKnowledge}
+              />
+            </div>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <label className="inline-flex items-center gap-2 text-sm font-bold text-graphite">
@@ -482,6 +544,13 @@ export function TrickExplorer({ tricks, options }: Props) {
   );
 }
 
+function matchesKnowledgeFilter(trick: Trick, knowledge: string) {
+  if (knowledge === allValue) return true;
+  if (knowledge === "enriched") return trick.tags.includes("由来メモあり");
+  if (knowledge === "sources") return trick.knowledgeSourceUrls.length > 0;
+  return trick.knowledgeStatus === knowledge;
+}
+
 function matchesPreset(trick: Trick, criteria: PresetCriteria) {
   return (
     (!criteria.discipline || trick.discipline === criteria.discipline) &&
@@ -509,6 +578,7 @@ function makeExplorerSearch({
   difficulty,
   risk,
   tag,
+  knowledge,
   sort
 }: {
   query: string;
@@ -519,6 +589,7 @@ function makeExplorerSearch({
   difficulty: string;
   risk: string;
   tag: string;
+  knowledge: string;
   sort: string;
 }) {
   const params = new URLSearchParams();
@@ -531,6 +602,7 @@ function makeExplorerSearch({
   if (difficulty !== allValue) params.set("difficulty", difficulty);
   if (risk !== allValue) params.set("risk", risk);
   if (tag !== allValue) params.set("tag", tag);
+  if (knowledge !== allValue) params.set("knowledge", knowledge);
   if (sort !== "level") params.set("sort", sort);
   return params.toString();
 }
@@ -599,5 +671,34 @@ function GuideNote({ label, value }: { label: string; value: string }) {
       <p className="text-[11px] font-black text-pine">{label}</p>
       <p className="mt-1 text-xs font-semibold leading-5 text-graphite/76">{value}</p>
     </div>
+  );
+}
+
+function KnowledgeFilterButton({
+  label,
+  value,
+  current,
+  count,
+  onChange
+}: {
+  label: string;
+  value: string;
+  current: string;
+  count: number;
+  onChange: (value: string) => void;
+}) {
+  const active = current === value;
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(active ? allValue : value)}
+      className={`inline-flex min-h-10 items-center gap-2 rounded border px-3 text-xs font-black transition ${
+        active ? "border-pine bg-pine text-white" : "border-ink/12 bg-white text-graphite hover:border-pine/45 hover:text-pine"
+      }`}
+    >
+      {active ? <CheckCircle2 aria-hidden className="size-3.5 shrink-0" /> : <Clock aria-hidden className="size-3.5 shrink-0" />}
+      <span>{label}</span>
+      <span className={`rounded px-1.5 py-0.5 text-[10px] ${active ? "bg-white/18 text-white" : "bg-paper text-graphite/68"}`}>{count}</span>
+    </button>
   );
 }

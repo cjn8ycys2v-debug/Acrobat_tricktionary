@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, GitBranch, ShieldAlert, Waypoints } from "lucide-react";
+import { ArrowUpRight, BookOpenText, CheckCircle2, Clock, GitBranch, ShieldAlert, Waypoints } from "lucide-react";
 import type { Trick } from "@/lib/types";
 import { MetricDots } from "@/components/MetricDots";
 
@@ -9,6 +9,12 @@ export function TrickCard({ trick, returnHref }: { trick: Trick; returnHref?: st
       ? { pathname: `/tricks/${trick.slug}` as `/tricks/${string}`, query: { from: returnHref } }
       : (`/tricks/${trick.slug}` as `/tricks/${string}`);
   const mapHref = { pathname: "/map" as const, query: { trick: trick.slug } };
+  const hasOriginMemo = trick.tags.includes("由来メモあり");
+  const knowledgeLabel = {
+    draft: "未補強",
+    reviewing: "監修中",
+    reviewed: "監修済み"
+  }[trick.knowledgeStatus];
 
   return (
     <article className="group flex h-full flex-col rounded border border-ink/10 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-pine/40 hover:shadow-soft">
@@ -35,6 +41,26 @@ export function TrickCard({ trick, returnHref }: { trick: Trick; returnHref?: st
         </Link>
       </div>
       <p className="mt-3 flex-1 text-sm leading-6 text-graphite/76">{trick.summary}</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {hasOriginMemo ? (
+          <span className="inline-flex max-w-full items-center gap-1.5 rounded border border-pine/18 bg-skywash px-2 py-1 text-[11px] font-black text-pine">
+            <BookOpenText aria-hidden className="size-3.5 shrink-0" />
+            由来メモ
+          </span>
+        ) : null}
+        <span
+          className={`inline-flex max-w-full items-center gap-1.5 rounded border px-2 py-1 text-[11px] font-black ${
+            trick.knowledgeStatus === "reviewed"
+              ? "border-pine/22 bg-skywash text-pine"
+              : trick.knowledgeStatus === "reviewing"
+                ? "border-saffron/45 bg-saffron/14 text-graphite"
+                : "border-ink/10 bg-paper text-graphite/62"
+          }`}
+        >
+          {trick.knowledgeStatus === "reviewed" ? <CheckCircle2 aria-hidden className="size-3.5 shrink-0" /> : <Clock aria-hidden className="size-3.5 shrink-0" />}
+          {knowledgeLabel}
+        </span>
+      </div>
       <div className="mt-4 grid gap-2 border-t border-ink/8 pt-4">
         <MetricDots label="難度" value={trick.difficulty} />
         <MetricDots label="危険度" value={trick.riskLevel} />
