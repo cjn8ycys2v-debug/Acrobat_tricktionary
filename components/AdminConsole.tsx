@@ -1051,6 +1051,9 @@ function KnowledgeBulkEditor({
 }) {
   const [query, setQuery] = useState("");
   const [stateFilter, setStateFilter] = useState("all");
+  const [levelFilter, setLevelFilter] = useState("all");
+  const [disciplineFilter, setDisciplineFilter] = useState("all");
+  const [reviewerDraft, setReviewerDraft] = useState("");
   const [visibleLimit, setVisibleLimit] = useState(24);
 
   const stats = useMemo(
@@ -1065,28 +1068,46 @@ function KnowledgeBulkEditor({
     }),
     [changedIds, tricks]
   );
+  const reviewProgress = tricks.length ? Math.round((stats.reviewed / tricks.length) * 100) : 0;
+  const disciplineOptions = useMemo(() => Array.from(new Set(tricks.map((trick) => trick.discipline))).sort((a, b) => a.localeCompare(b, "ja")), [tricks]);
+  const levelOptions = useMemo(() => Array.from(new Set(tricks.map((trick) => trick.level).filter((level) => level > 0))).sort((a, b) => a - b), [tricks]);
+  const reviewGroups = useMemo(() => makeKnowledgeReviewGroups(tricks), [tricks]);
 
   const visibleTricks = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     return tricks
       .filter((trick) => {
         const matchesQuery = !normalized || knowledgeSearchText(trick).includes(normalized);
+        const matchesLevel = levelFilter === "all" || trick.level === Number(levelFilter);
+        const matchesDiscipline = disciplineFilter === "all" || trick.discipline === disciplineFilter;
         const matchesFilter =
           stateFilter === "all" ||
           trick.knowledgeStatus === stateFilter ||
+          (stateFilter === "needsReview" && trick.knowledgeStatus !== "reviewed") ||
           (stateFilter === "needsAliases" && needsAliasReview(trick)) ||
           (stateFilter === "needsOrigin" && needsOriginReview(trick)) ||
           (stateFilter === "needsSafety" && needsSafetyReview(trick)) ||
           (stateFilter === "changed" && changedIds.has(trick.id));
-        return matchesQuery && matchesFilter;
+        return matchesQuery && matchesLevel && matchesDiscipline && matchesFilter;
       })
       .sort((a, b) => a.level - b.level || a.name.localeCompare(b.name, "ja"));
-  }, [changedIds, query, stateFilter, tricks]);
+  }, [changedIds, disciplineFilter, levelFilter, query, stateFilter, tricks]);
   const shownTricks = visibleTricks.slice(0, visibleLimit);
+  const bulkTargets = shownTricks;
 
   useEffect(() => {
     setVisibleLimit(24);
-  }, [query, stateFilter]);
+  }, [disciplineFilter, levelFilter, query, stateFilter]);
+
+  function applyStatusToShown(status: Trick["knowledgeStatus"]) {
+    for (const trick of bulkTargets) onUpdate(trick.id, { knowledgeStatus: status });
+  }
+
+  function applyReviewerToShown() {
+    const reviewer = reviewerDraft.trim();
+    if (!reviewer) return;
+    for (const trick of bulkTargets) onUpdate(trick.id, { knowledgeReviewedBy: reviewer });
+  }
 
   return (
     <section className="rounded border border-ink/10 bg-white p-4 shadow-sm sm:p-5">
@@ -1125,7 +1146,57 @@ function KnowledgeBulkEditor({
 
       <p className="mb-3 rounded bg-paper px-3 py-2 text-xs font-semibold text-graphite/72">{message}</p>
 
-      <div className="mb-4 grid gap-2 md:grid-cols-[1fr_220px]">
+      <div className="mb-4 rounded border border-pine/18 bg-skywash p-3 sm:p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h3 className="text-sm font-black text-ink">監修レビューの進め方</h3>
+            <p className="mt-1 max-w-2xl text-xs font-semibold leading-5 text-graphite/72">
+              レベルや分野で絞り込み、表示中の技だけをまとめて監修中・監修済みにできます。まずはLv.1から順にレビューすると抜け漏れを追いやすいです。
+            </p>
+          </div>
+          <div className="rounded border border-white/70 bg-white px-3 py-2 text-right">
+            <p className="text-[10px] font-black text-graphite/58">監修率</p>
+            <p className="mt-1 text-xl font-black text-pine">{reviewProgress}%</p>
+          </div>
+        </div>
+        <div className="mt-3 grid gap-2 lg:grid-cols-[1fr_auto_auto_auto]">
+          <label className="flex h-10 min-w-0 items-center gap-2 rounded border border-ink/12 bg-white px-3 text-sm focus-within:border-pine">
+            <CheckCircle2 aria-hidden className="size-4 shrink-0 text-pine" />
+            <input
+              value={reviewerDraft}
+              onChange={(event) => setReviewerDraft(event.target.value)}
+              placeholder="監修者名 / 監修チーム名"
+              className="h-full min-w-0 flex-1 bg-transparent outline-none"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={applyReviewerToShown}
+            disabled={!bulkTargets.length || !reviewerDraft.trim()}
+            className="inline-flex h-10 items-center justify-center rounded border border-ink/14 bg-white px-3 text-xs font-black text-graphite transition hover:border-pine hover:text-pine disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            表示中に監修者を適用
+          </button>
+          <button
+            type="button"
+            onClick={() => applyStatusToShown("reviewing")}
+            disabled={!bulkTargets.length}
+            className="inline-flex h-10 items-center justify-center rounded border border-saffron/60 bg-white px-3 text-xs font-black text-graphite transition hover:border-saffron hover:bg-saffron/12 disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            表示中を監修中
+          </button>
+          <button
+            type="button"
+            onClick={() => applyStatusToShown("reviewed")}
+            disabled={!bulkTargets.length}
+            className="inline-flex h-10 items-center justify-center rounded bg-pine px-3 text-xs font-black text-white transition hover:bg-ink disabled:cursor-not-allowed disabled:bg-graphite/35"
+          >
+            表示中を監修済み
+          </button>
+        </div>
+      </div>
+
+      <div className="mb-4 grid gap-2 lg:grid-cols-[1fr_140px_180px_220px]">
         <label className="flex h-10 min-w-0 items-center gap-2 rounded border border-ink/12 bg-paper px-3 text-sm focus-within:border-pine">
           <Search aria-hidden className="size-4 shrink-0 text-graphite/42" />
           <input
@@ -1136,6 +1207,30 @@ function KnowledgeBulkEditor({
           />
         </label>
         <select
+          value={levelFilter}
+          onChange={(event) => setLevelFilter(event.target.value)}
+          className="h-10 rounded border border-ink/14 bg-paper px-3 text-sm font-bold outline-none focus:border-pine"
+        >
+          <option value="all">全レベル</option>
+          {levelOptions.map((level) => (
+            <option key={level} value={level}>
+              Lv.{level}
+            </option>
+          ))}
+        </select>
+        <select
+          value={disciplineFilter}
+          onChange={(event) => setDisciplineFilter(event.target.value)}
+          className="h-10 rounded border border-ink/14 bg-paper px-3 text-sm font-bold outline-none focus:border-pine"
+        >
+          <option value="all">全分野</option>
+          {disciplineOptions.map((discipline) => (
+            <option key={discipline} value={discipline}>
+              {discipline}
+            </option>
+          ))}
+        </select>
+        <select
           value={stateFilter}
           onChange={(event) => setStateFilter(event.target.value)}
           className="h-10 rounded border border-ink/14 bg-paper px-3 text-sm font-bold outline-none focus:border-pine"
@@ -1144,6 +1239,7 @@ function KnowledgeBulkEditor({
           <option value="draft">下書き</option>
           <option value="reviewing">監修中</option>
           <option value="reviewed">監修済み</option>
+          <option value="needsReview">監修待ち</option>
           <option value="needsAliases">別名未設定</option>
           <option value="needsOrigin">由来要補強</option>
           <option value="needsSafety">安全要補強</option>
@@ -1154,6 +1250,29 @@ function KnowledgeBulkEditor({
       <p className="mb-3 text-xs font-black text-graphite/62">
         表示中: {shownTricks.length} / {visibleTricks.length} 技
       </p>
+
+      <div className="mb-4 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+        {reviewGroups.map((group) => (
+          <button
+            key={group.key}
+            type="button"
+            onClick={() => {
+              setDisciplineFilter(group.discipline);
+              setStateFilter(group.status);
+              setQuery("");
+            }}
+            className="rounded border border-ink/10 bg-paper p-3 text-left transition hover:border-pine hover:bg-skywash"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-black text-ink">{group.label}</p>
+                <p className="mt-1 text-xs font-semibold text-graphite/62">{group.description}</p>
+              </div>
+              <span className="rounded bg-white px-2 py-1 text-sm font-black text-pine">{group.count}</span>
+            </div>
+          </button>
+        ))}
+      </div>
 
       <div className="grid gap-3">
         {shownTricks.length ? (
@@ -1263,6 +1382,44 @@ function KnowledgeBulkEditor({
       </div>
     </section>
   );
+}
+
+function makeKnowledgeReviewGroups(tricks: Trick[]) {
+  const pendingByDiscipline = new Map<string, number>();
+  for (const trick of tricks) {
+    if (trick.knowledgeStatus === "reviewed") continue;
+    pendingByDiscipline.set(trick.discipline, (pendingByDiscipline.get(trick.discipline) ?? 0) + 1);
+  }
+
+  const pendingGroups = Array.from(pendingByDiscipline.entries())
+    .map(([discipline, count]) => ({
+      key: `${discipline}-pending`,
+      discipline,
+      status: "needsReview",
+      label: `${discipline}を監修`,
+      description: "未監修・監修中を分野別に確認",
+      count
+    }))
+    .sort((a, b) => b.count - a.count || a.discipline.localeCompare(b.discipline, "ja"));
+
+  if (pendingGroups.length) return pendingGroups.slice(0, 4);
+
+  const reviewedByDiscipline = new Map<string, number>();
+  for (const trick of tricks) {
+    reviewedByDiscipline.set(trick.discipline, (reviewedByDiscipline.get(trick.discipline) ?? 0) + 1);
+  }
+
+  return Array.from(reviewedByDiscipline.entries())
+    .map(([discipline, count]) => ({
+      key: `${discipline}-reviewed`,
+      discipline,
+      status: "reviewed",
+      label: `${discipline}を再確認`,
+      description: "監修済みの内容を分野別に見直し",
+      count
+    }))
+    .sort((a, b) => b.count - a.count || a.discipline.localeCompare(b.discipline, "ja"))
+    .slice(0, 4);
 }
 
 function KnowledgeStat({ label, value }: { label: string; value: number }) {
