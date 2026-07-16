@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Activity, BookOpenText, CheckCircle2, Clock, Compass, Filter, GitBranch, Map, Search, ShieldAlert, SlidersHorizontal, Waypoints, X } from "lucide-react";
-import type { Trick } from "@/lib/types";
+import { Activity, BookOpenText, CheckCircle2, Clock, Compass, Filter, GitBranch, Map as MapIcon, Search, ShieldAlert, SlidersHorizontal, Waypoints, X } from "lucide-react";
+import type { Trick, TrickRelation } from "@/lib/types";
 import { TrickCard } from "@/components/TrickCard";
+import { isPrimarySkillRelation, makeDirectSkillTreeRelations } from "@/lib/map-layout";
+import { masteryChangeEvent, masteryStorageKey } from "@/lib/mastery";
 import { disciplineDescriptions, disciplineGuides, familyGuides } from "@/lib/taxonomy";
 
 type FilterOptions = {
@@ -20,6 +22,7 @@ type FilterOptions = {
 type Props = {
   tricks: Trick[];
   options: FilterOptions;
+  relations: TrickRelation[];
 };
 
 const allValue = "all";
@@ -29,7 +32,14 @@ type PresetCriteria = Partial<Pick<Trick, "discipline" | "family" | "ropeContext
   tag?: string;
 };
 
-export function TrickExplorer({ tricks, options }: Props) {
+type PracticeSuggestion = {
+  trick: Trick;
+  reason: "ready" | "foundation";
+  prerequisiteNames: string[];
+  missingCount: number;
+};
+
+export function TrickExplorer({ tricks, options, relations }: Props) {
   const [query, setQuery] = useState("");
   const [discipline, setDiscipline] = useState(allValue);
   const [family, setFamily] = useState(allValue);
@@ -41,6 +51,8 @@ export function TrickExplorer({ tricks, options }: Props) {
   const [knowledge, setKnowledge] = useState(allValue);
   const [sort, setSort] = useState("level");
   const [urlReady, setUrlReady] = useState(false);
+  const [masteredIds, setMasteredIds] = useState<Set<string>>(() => new Set());
+  const [masteryReady, setMasteryReady] = useState(false);
 
   const filtered = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -101,6 +113,8 @@ export function TrickExplorer({ tricks, options }: Props) {
     [tricks]
   );
   const knowledgeProgress = Math.round((knowledgeStats.enriched / Math.max(1, tricks.length)) * 100);
+  const masteredCount = useMemo(() => tricks.filter((trick) => masteredIds.has(trick.id)).length, [masteredIds, tricks]);
+  const nextPracticeSuggestions = useMemo(() => makePracticeSuggestions(tricks, relations, masteredIds), [masteredIds, relations, tricks]);
 
   const disciplineStats = useMemo(
     () =>
@@ -255,6 +269,21 @@ export function TrickExplorer({ tricks, options }: Props) {
     const currentPath = `${stripBasePath(window.location.pathname)}${window.location.search}`;
     if (currentPath !== nextPath) window.history.replaceState(null, "", withBasePath(nextPath));
   }, [explorerSearch, urlReady]);
+
+  useEffect(() => {
+    function syncMastery() {
+      setMasteredIds(readMasteredIdsFromStorage());
+      setMasteryReady(true);
+    }
+
+    syncMastery();
+    window.addEventListener("storage", syncMastery);
+    window.addEventListener(masteryChangeEvent, syncMastery);
+    return () => {
+      window.removeEventListener("storage", syncMastery);
+      window.removeEventListener(masteryChangeEvent, syncMastery);
+    };
+  }, []);
 
   function resetFilters() {
     setQuery("");
@@ -445,6 +474,8 @@ export function TrickExplorer({ tricks, options }: Props) {
         </div>
       </div>
 
+      <NextPracticePanel suggestions={nextPracticeSuggestions} masteredCount={masteredCount} totalCount={tricks.length} masteryReady={masteryReady} />
+
       <div className="mt-5">
         <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -574,7 +605,7 @@ export function TrickExplorer({ tricks, options }: Props) {
           href={mapHref}
           className="inline-flex h-10 w-full items-center justify-center gap-2 rounded bg-pine px-3 text-sm font-black text-white transition hover:bg-ink sm:w-auto"
         >
-          <Map aria-hidden className="size-4" />
+          <MapIcon aria-hidden className="size-4" />
           この条件を相関図で見る
         </Link>
       </div>
@@ -608,6 +639,169 @@ function matchesPreset(trick: Trick, criteria: PresetCriteria) {
     (!criteria.ropeContext || trick.ropeContext === criteria.ropeContext) &&
     (!criteria.tag || trick.tags.includes(criteria.tag))
   );
+}
+
+function NextPracticePanel({
+  suggestions,
+  masteredCount,
+  totalCount,
+  masteryReady
+}: {
+  suggestions: PracticeSuggestion[];
+  masteredCount: number;
+  totalCount: number;
+  masteryReady: boolean;
+}) {
+  const progress = Math.round((masteredCount / Math.max(1, totalCount)) * 100);
+  const isComplete = totalCount > 0 && masteredCount >= totalCount;
+
+  return (
+    <div className="mt-4 rounded border border-coral/18 bg-white p-3 shadow-sm sm:p-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <p className="flex items-center gap-2 text-sm font-black text-ink">
+            <CheckCircle2 aria-hidden className="size-4 text-coral" />
+            次に練習する候補
+          </p>
+          <p className="mt-1 max-w-2xl text-xs font-semibold leading-5 text-graphite/68">
+            {isComplete
+              ? "全技チェック済みです。相関図で連続や派生を組み替えられます。"
+              : masteredCount
+                ? "前提技のチェック状況から、進みやすい技を上に出しています。"
+                : "基礎からチェックを埋めると、前提技から次候補がつながります。"}
+          </p>
+        </div>
+        <div className="w-full shrink-0 rounded bg-paper p-3 lg:w-48">
+          <div className="flex items-end justify-between gap-2">
+            <span className="text-[11px] font-black text-graphite/62">習得チェック</span>
+            <span className="text-lg font-black leading-none text-ink">{masteryReady ? `${masteredCount}/${totalCount}` : "--"}</span>
+          </div>
+          <div className="mt-2 h-2 overflow-hidden rounded bg-white">
+            <div className="h-full rounded bg-coral transition-[width]" style={{ width: `${masteryReady ? progress : 0}%` }} />
+          </div>
+        </div>
+      </div>
+
+      {suggestions.length ? (
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {suggestions.slice(0, 4).map((item) => (
+            <article
+              key={item.trick.id}
+              className={`flex min-h-[178px] flex-col rounded border p-3 ${
+                item.reason === "ready" ? "border-coral/26 bg-coral/6" : "border-ink/10 bg-paper"
+              }`}
+            >
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="rounded bg-white px-2 py-0.5 text-[11px] font-black text-pine">Lv.{item.trick.level}</span>
+                <span className="rounded bg-ink px-2 py-0.5 text-[11px] font-black text-white">{item.trick.discipline}</span>
+                <span className="rounded bg-saffron/18 px-2 py-0.5 text-[11px] font-black text-graphite">{item.trick.family}</span>
+              </div>
+              <Link href={`/tricks/${item.trick.slug}`} className="mt-2 break-words text-base font-black leading-tight text-ink transition hover:text-pine">
+                {item.trick.name}
+              </Link>
+              <p className="mt-2 flex-1 text-xs font-semibold leading-5 text-graphite/70">
+                {item.reason === "ready"
+                  ? `前提クリア: ${item.prerequisiteNames.slice(0, 2).join(" / ")}`
+                  : item.missingCount
+                    ? `前提 ${item.missingCount} 個を確認しながら進む入口候補`
+                    : "基礎のチェック埋めに向いた入口候補"}
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <Link
+                  href={`/tricks/${item.trick.slug}`}
+                  className="inline-flex h-9 items-center justify-center rounded border border-ink/10 bg-white px-2 text-xs font-black text-graphite transition hover:border-pine hover:text-pine"
+                >
+                  詳細
+                </Link>
+                <Link
+                  href={{ pathname: "/map", query: { trick: item.trick.slug } }}
+                  className="inline-flex h-9 items-center justify-center gap-1 rounded bg-pine px-2 text-xs font-black text-white transition hover:bg-ink"
+                >
+                  <MapIcon aria-hidden className="size-3.5" />
+                  相関図
+                </Link>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-3 rounded border border-dashed border-ink/16 bg-paper p-4 text-sm font-semibold leading-6 text-graphite/72">
+          {isComplete ? "チェック完了です。相関図で派生や連続候補を見直せます。" : "技データがまだありません。"}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function makePracticeSuggestions(tricks: Trick[], relations: TrickRelation[], masteredIds: Set<string>): PracticeSuggestion[] {
+  const trickById = new Map(tricks.map((trick) => [trick.id, trick]));
+  const directLearningRelations = makeDirectSkillTreeRelations(
+    relations.filter((relation) => isPrimarySkillRelation(relation)),
+    tricks,
+    { maxIncomingPerTarget: 2 }
+  );
+  const incomingByTarget = new Map<string, TrickRelation[]>();
+
+  for (const relation of directLearningRelations) {
+    if (!trickById.has(relation.fromTrickId) || !trickById.has(relation.toTrickId)) continue;
+    const incoming = incomingByTarget.get(relation.toTrickId) ?? [];
+    incoming.push(relation);
+    incomingByTarget.set(relation.toTrickId, incoming);
+  }
+
+  const ready = tricks
+    .filter((trick) => !masteredIds.has(trick.id))
+    .flatMap((trick): PracticeSuggestion[] => {
+      const incoming = incomingByTarget.get(trick.id) ?? [];
+      if (!incoming.length || incoming.some((relation) => !masteredIds.has(relation.fromTrickId))) return [];
+      const prerequisiteNames = incoming.map((relation) => trickById.get(relation.fromTrickId)?.name).filter((name): name is string => Boolean(name));
+      return [{
+        trick,
+        reason: "ready",
+        prerequisiteNames,
+        missingCount: 0
+      }];
+    })
+    .sort(comparePracticeSuggestions);
+
+  const selectedIds = new Set(ready.map((item) => item.trick.id));
+  const foundations = tricks
+    .filter((trick) => !masteredIds.has(trick.id) && !selectedIds.has(trick.id))
+    .map((trick) => {
+      const incoming = incomingByTarget.get(trick.id) ?? [];
+      return {
+        trick,
+        reason: "foundation" as const,
+        prerequisiteNames: incoming.map((relation) => trickById.get(relation.fromTrickId)?.name).filter((name): name is string => Boolean(name)),
+        missingCount: incoming.filter((relation) => !masteredIds.has(relation.fromTrickId)).length
+      };
+    })
+    .sort(comparePracticeSuggestions);
+
+  return [...ready, ...foundations].slice(0, 6);
+}
+
+function comparePracticeSuggestions(a: PracticeSuggestion, b: PracticeSuggestion) {
+  if (a.reason !== b.reason) return a.reason === "ready" ? -1 : 1;
+  return (
+    a.trick.level - b.trick.level ||
+    a.trick.difficulty - b.trick.difficulty ||
+    a.trick.riskLevel - b.trick.riskLevel ||
+    a.missingCount - b.missingCount ||
+    a.trick.name.localeCompare(b.trick.name, "ja")
+  );
+}
+
+function readMasteredIdsFromStorage() {
+  try {
+    const raw = window.localStorage.getItem(masteryStorageKey);
+    if (!raw) return new Set<string>();
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return new Set<string>();
+    return new Set(parsed.filter((item): item is string => typeof item === "string"));
+  } catch {
+    return new Set<string>();
+  }
 }
 
 function makeMapHref({ query, discipline, family }: { query: string; discipline: string; family: string }) {

@@ -40,7 +40,7 @@ export default async function TricksPage() {
           </div>
         </div>
       </section>
-      <TrickExplorer tricks={published} options={atlas.options} />
+      <TrickExplorer tricks={published} options={atlas.options} relations={atlas.relations} />
       <section className="mx-auto max-w-7xl px-3 pb-14 sm:px-6 sm:pb-16 lg:px-8">
         <div className="rounded border border-ink/10 bg-ink p-4 text-white sm:p-5">
           <p className="mb-3 text-sm font-bold text-saffron">Featured</p>
