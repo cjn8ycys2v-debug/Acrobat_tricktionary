@@ -157,7 +157,7 @@ const knowledgeOverrides: Record<string, TrickKnowledgeOverride> = {
     originNote:
       "体操では cartwheel と呼ばれる基礎的な側方回転です。ダブルダッチでは、技名そのものの由来よりも、縄内で横移動しながら手支持を入れるための共通言語として使われます。",
     practiceSteps: ["線の上で手足が一直線に通るか確認する", "着地足と胸の向きを毎回そろえる", "縄内では入る位置と抜ける位置を先に決める"],
-    commonMistakes: ["手を近くに着きすぎて腰が通らない", "着地で胸が横を向きすぎて次の動きに入れない"],
+    commonMistakes: ["手を近くに着きすぎて腰が通らない", "着地で胸が横を向きすぎて次の動きに入れない", "横幅が大きくなり縄内の戻り位置がずれる"],
     safetyNotes: ["手首と肩に痛みがある日は回数を減らす", "縄内では横幅を取りすぎない位置から入る"],
     coachComment: "ロンダートやエアリアルへ進む人ほど、側転の手の位置と着地の向きを丁寧にそろえると後が楽です。",
     tags: ["由来メモあり", "側方入口"],
@@ -184,7 +184,7 @@ const knowledgeOverrides: Record<string, TrickKnowledgeOverride> = {
     originNote:
       "英語では roundoff と呼ばれ、体操・タンブリングで宙返りの前に反発を作る代表的な接続技として整理されています。日本語のロンダートはこの roundoff 系の呼び名として使われます。",
     practiceSteps: ["側転の入りから胸を返して両足着地へまとめる", "着地で膝を沈めすぎず、床を押し返す感覚を作る", "次にバク転や宙返りを置く前提で抜け方向を固定する"],
-    commonMistakes: ["手を着く角度が浅く、着地で横に流れる", "反発を作る前に膝が深く曲がってしまう"],
+    commonMistakes: ["手を着く角度が浅く、着地で横に流れる", "反発を作る前に膝が深く曲がってしまう", "両足着地で胸が落ちて次の技へつながらない"],
     safetyNotes: ["首や腰を反って無理に返さない", "ロン宙へ進む前に、単体の着地反発を補助者に確認してもらう"],
     coachComment: "見た目は側転に近いですが、目的は横に回ることではなく次の技へ力を残すことです。",
     tags: ["由来メモあり", "接続技", "反発"],
@@ -335,9 +335,9 @@ const knowledgeOverrides: Record<string, TrickKnowledgeOverride> = {
     originNote:
       "英語の aerial は「空中の」という意味を持ち、手を着かない側方系アクロの呼び名として体操やトリッキングで広く使われます。縄内では横幅を取りすぎない aerial として調整することが実用上のポイントです。",
     practiceSteps: ["側転と片手側転で腰の通り道をそろえる", "蹴り上げ足と着地足を固定する", "縄内では低速で横幅と着地位置を確認する"],
-    commonMistakes: ["手を抜くことだけを急いで腰が落ちる", "蹴り上げ足が横へ逃げて着地がずれる"],
+    commonMistakes: ["手を抜くことだけを急いで腰が落ちる", "蹴り上げ足が横へ逃げて着地がずれる", "着地後に胸が起きず次のステップへ流れない"],
     safetyNotes: ["初期はマットと補助で着地を確認する", "膝や足首に不安がある日は反復数を抑える"],
-    coachComment: "手を着かない技ですが、練習では手を着く技の精度がそのまま出ます。",
+    coachComment: "手を着かない技ですが、練習では手を着く技の精度がそのまま出ます。側転の線、片手側転の荷重、着地後の一歩をまとめて見てください。",
     tags: ["由来メモあり", "側方", "手なし"],
     knowledgeStatus: "reviewing"
   },
@@ -363,7 +363,7 @@ const knowledgeOverrides: Record<string, TrickKnowledgeOverride> = {
     originNote:
       "トリッキングでは butterfly setup から発展する代表的なひねり技として扱われます。武術的な蹴りの軌道と体操的な空中姿勢が混ざるため、名前も蝶のような横長い軌道から理解すると覚えやすいです。",
     practiceSteps: ["バタフライの入りで胸を低く保つ", "ひねり出しを急がず肩と目線をそろえる", "着地後に次のステップへ流す"],
-    commonMistakes: ["縦回転にしようとして軌道が詰まる", "ひねり出しが早すぎて高さと横移動が消える"],
+    commonMistakes: ["縦回転にしようとして軌道が詰まる", "ひねり出しが早すぎて高さと横移動が消える", "着地後のステップが止まりロープの周期へ戻れない"],
     safetyNotes: ["首を残したまま無理にひねらない", "滑る床では踏切と着地を避ける"],
     coachComment: "縄内で使うなら、大きく飛ぶよりも入る角度と着地後の流れを小さく設計する方が映えます。",
     tags: ["由来メモあり", "水平軌道", "トリッキング"],
@@ -433,7 +433,7 @@ const knowledgeOverrides: Record<string, TrickKnowledgeOverride> = {
     originNote:
       "Raiz はトリッキングやカポエイラ文脈で使われる呼び名です。厳密な語源の扱いは監修で確認しつつ、この図鑑ではゲイナー系やムーンキック系へつながる斜め軌道の入口として整理しています。",
     practiceSteps: ["踏み込み足と蹴り足を固定する", "胸を急に閉じず、斜めの軌道を残す", "着地足を決めて次のステップへ流す"],
-    commonMistakes: ["後ろへ倒れ込むだけで蹴り足が見えない", "着地足が毎回変わって次の技につながらない"],
+    commonMistakes: ["後ろへ倒れ込むだけで蹴り足が見えない", "着地足が毎回変わって次の技につながらない", "胸を閉じるのが早く斜めの浮きが消える"],
     safetyNotes: ["腰を反りすぎる感覚がある時は中止する", "初期は広い床で着地方向を確認する"],
     coachComment: "ライズは高さよりも角度の技です。縄内では大きく飛ぶより、蹴り足の線が見える角度を優先してください。",
     tags: ["由来メモあり", "片足", "斜め軌道"],
@@ -447,7 +447,7 @@ const knowledgeOverrides: Record<string, TrickKnowledgeOverride> = {
     originNote:
       "540 kick は武術系の蹴りとトリッキングの文脈で広く使われる呼び名です。回転数を表す名前ですが、縄内で使う時は回りきることよりも、蹴り足の形と着地後のリズム復帰を優先して整理します。",
     practiceSteps: ["踏切足と蹴り足を分けて確認する", "蹴り足を先に見せ、体を急いで丸めない", "着地後の一歩目まで同じ方向にそろえる"],
-    commonMistakes: ["回転を急いで蹴り足が小さくなる", "着地で体が流れて次のロープに遅れる"],
+    commonMistakes: ["回転を急いで蹴り足が小さくなる", "着地で体が流れて次のロープに遅れる", "踏切足と蹴り足の順番が曖昧になる"],
     safetyNotes: ["膝や足首に違和感がある日は反復しない", "滑る床では踏切を避ける"],
     coachComment: "540は数字より形が見えるかが大事です。縄内では足の軌道が見えた瞬間に価値が出ます。",
     tags: ["由来メモあり", "蹴り", "片足"],
@@ -461,7 +461,7 @@ const knowledgeOverrides: Record<string, TrickKnowledgeOverride> = {
     originNote:
       "英語の corkscrew は「らせん状にねじれるもの」を指す語で、トリッキングでは斜め軌道でねじれる見た目から cork と略されることがあります。発祥の厳密な初出は監修時に追記します。",
     practiceSteps: ["ゲイナーやライズ系の入りを安定させる", "ひねる前に高さと胸の向きを作る", "着地足を決めてから回転量を増やす"],
-    commonMistakes: ["ひねりを急いで踏切の高さがなくなる", "着地足が毎回変わり、次の動きへつながらない"],
+    commonMistakes: ["ひねりを急いで踏切の高さがなくなる", "着地足が毎回変わり、次の動きへつながらない", "胸の向きが先に開いて斜め軌道が崩れる"],
     safetyNotes: ["初回は補助者とマットを使う", "疲労時はひねり量を増やさない"],
     coachComment: "コークは名前の通りねじれが目立つ技ですが、成功率は入りの足と着地の設計で大きく変わります。",
     tags: ["由来メモあり", "高難度", "ひねり"],
@@ -475,7 +475,7 @@ const knowledgeOverrides: Record<string, TrickKnowledgeOverride> = {
     originNote:
       "Macaco はポルトガル語で「猿」を意味し、カポエイラでは低い姿勢から後方へ体を返す動きとして知られます。猿が跳ねるような見た目から名前を理解すると、技の質感をつかみやすいです。",
     practiceSteps: ["片手を背中側に着く位置を確認する", "腰を上げてから脚を越す順番を作る", "着地後にすぐ縄のリズムへ戻る"],
-    commonMistakes: ["先に頭を倒してしまい腰が上がらない", "手を遠くに着きすぎて肩が詰まる"],
+    commonMistakes: ["先に頭を倒してしまい腰が上がらない", "手を遠くに着きすぎて肩が詰まる", "起き上がり方向が遅れて縄のリズムに戻れない"],
     safetyNotes: ["肩と手首に痛みがある日は避ける", "後方のスペースを確認してから入る"],
     coachComment: "マカコは派手なバク転の代わりではなく、低さと流れを見せる技として使うと縄内で生きます。",
     knowledgeSourceUrls: ["https://en.wikipedia.org/wiki/List_of_capoeira_techniques#Macaco"],
@@ -490,7 +490,7 @@ const knowledgeOverrides: Record<string, TrickKnowledgeOverride> = {
     originNote:
       "カポエイラでは Aú helicóptero として、aú の反転中に脚がヘリコプターのように回る動きとして説明されます。名前は見た目の比喩として覚えるとわかりやすいです。",
     practiceSteps: ["通常の側転で反転のラインをそろえる", "脚の入れ替えだけを低速で確認する", "縄内では横幅と着地位置を小さく決める"],
-    commonMistakes: ["脚を回すことに集中して手の支持が流れる", "横幅が大きくなりすぎてロープに近づく"],
+    commonMistakes: ["脚を回すことに集中して手の支持が流れる", "横幅が大きくなりすぎてロープに近づく", "通常側転の着地線が崩れて次の動きへ遅れる"],
     safetyNotes: ["手首と肩の支持が崩れる日は避ける", "周囲の人とターン位置を確認してから入る"],
     coachComment: "ヘリコプテイロは高さよりも脚の円運動の見え方が魅力です。縄内ではコンパクトさが武器になります。",
     knowledgeSourceUrls: ["https://en.wikipedia.org/wiki/List_of_capoeira_techniques#Other_kicks"],
@@ -505,7 +505,7 @@ const knowledgeOverrides: Record<string, TrickKnowledgeOverride> = {
     originNote:
       "英語では Kick the Moon とも呼ばれ、脚を上方向へ蹴り上げる見た目が名前の手がかりになります。カポエイラ文脈では Chute na lua という呼び名も見られ、トリッキングとカポエイラの境界で理解しやすい技です。",
     practiceSteps: ["ゲイナー系の入りで胸と目線を残す", "蹴り足を曲げずに高く見せる", "着地後に一歩でリズムへ戻る"],
-    commonMistakes: ["蹴り足を急いで回しすぎて形が見えない", "着地が流れて次のステップが遅れる"],
+    commonMistakes: ["蹴り足を急いで回しすぎて形が見えない", "着地が流れて次のステップが遅れる", "胸を反らせすぎて腰に負担が出る"],
     safetyNotes: ["腰を反りすぎて痛みが出る場合は中止する", "初期はマット上で着地足を固定する"],
     coachComment: "蹴り足の線が名前の由来に近い魅力です。縄内では大きさよりも脚の見え方を優先すると使いやすいです。",
     knowledgeSourceUrls: ["https://en.wikipedia.org/wiki/Moon_kick", "https://en.wikipedia.org/wiki/List_of_capoeira_techniques#Folha_Seca"],
@@ -520,7 +520,7 @@ const knowledgeOverrides: Record<string, TrickKnowledgeOverride> = {
     originNote:
       "英語では front tuck や front flip と呼ばれ、前方宙返りの基本形として体操・タンブリングで扱われます。縄内では前へ進む距離を小さくし、着地後にロープへ戻れる形に調整することが実用上の要点です。",
     practiceSteps: ["踏切だけを分けて高さを作る", "抱え込みを急がず膝を胸へ引きつける", "開くタイミングと着地後の抜けを固定する"],
-    commonMistakes: ["前へ飛び込みすぎて高さが出ない", "抱え込みが早すぎて着地を見る余裕がなくなる"],
+    commonMistakes: ["前へ飛び込みすぎて高さが出ない", "抱え込みが早すぎて着地を見る余裕がなくなる", "開くタイミングが遅れて着地後に前へ流れる"],
     safetyNotes: ["初期はマットと補助者を用意する", "首や腰に不安がある日は通さない"],
     coachComment: "前宙は思い切りよりも、踏切で上に残れるかが大事です。縄内では移動距離を抑えるほど次へ戻りやすくなります。",
     tags: ["由来メモあり", "前方宙返り", "空中系"],
@@ -534,7 +534,7 @@ const knowledgeOverrides: Record<string, TrickKnowledgeOverride> = {
     originNote:
       "Webster は片足踏切の前方回転として広く使われる呼び名です。名前の厳密な由来は監修時に確認し、この図鑑では前宙とゲイナー系の間にある片足踏切の入口として整理しています。",
     practiceSteps: ["片足踏切と蹴り上げ足を分けて確認する", "胸を落としすぎず前方へ回る", "着地足と抜け方向を固定する"],
-    commonMistakes: ["蹴り上げ足だけが先行して回転が足りない", "着地で横へ流れて次の縄に戻れない"],
+    commonMistakes: ["蹴り上げ足だけが先行して回転が足りない", "着地で横へ流れて次の縄に戻れない", "踏切足が流れて片足の入口が毎回変わる"],
     safetyNotes: ["初期はマット上で着地足を固定する", "膝や足首に違和感がある日は反復しない"],
     coachComment: "ウェブスターは片足で入る分、形が出やすい技です。縄内では入りの一歩を小さくするほど扱いやすくなります。",
     tags: ["由来メモあり", "片足", "前方宙返り"],
@@ -548,7 +548,7 @@ const knowledgeOverrides: Record<string, TrickKnowledgeOverride> = {
     originNote:
       "英語圏でも flash kick と呼ばれ、後方回転にキックの形を加える技としてトリッキングやアクロバットで扱われます。名前は一瞬見える伸ばした脚の印象と結びつけると覚えやすいです。",
     practiceSteps: ["バク宙系の高さと着地を安定させる", "脚を伸ばす瞬間を動画で確認する", "着地後に一歩で縄のリズムへ戻る"],
-    commonMistakes: ["脚を見せようとして回転が遅れる", "腰を反りすぎて着地が流れる"],
+    commonMistakes: ["脚を見せようとして回転が遅れる", "腰を反りすぎて着地が流れる", "後方回転の高さが足りないまま形だけを足す"],
     safetyNotes: ["十分な後方回転の前提がない状態で通さない", "疲労時に脚の形だけを足さない"],
     coachComment: "フラッシュキックは形が強い技ですが、土台は後方回転です。まず安全に立てる高さを優先してください。",
     tags: ["由来メモあり", "蹴り", "後方宙返り"],
@@ -940,7 +940,7 @@ const knowledgeOverrides: Record<string, TrickKnowledgeOverride> = {
     originNote:
       "体操の pommel horse で知られる Thomas flair の系譜が名前の手がかりです。床で行うフレアはブレイキンのパワームーブとも接点があり、ダブルダッチでは床回転の見せ方として取り入れられます。",
     practiceSteps: ["開脚のまま腰を落とさず支持する", "片周ごとに手を置く位置を確認する", "縄内では回転幅を測ってから入る"],
-    commonMistakes: ["脚を大きく見せようとして腰が落ちる", "手の置き換えが遅れて回転が止まる"],
+    commonMistakes: ["脚を大きく見せようとして腰が落ちる", "手の置き換えが遅れて回転が止まる", "回転幅を決めずにロープ側へ近づきすぎる"],
     safetyNotes: ["手首、肩、股関節のウォームアップを十分に行う", "ロープとの距離を確保してから通す"],
     coachComment: "トーマスは回数よりも一周の形が大事です。縄内では半周でも見え方が強いので、無理に回数を増やさなくて大丈夫です。",
     knowledgeSourceUrls: ["https://www.gymnastics.sport/site/news/displaynews.php?idNews=2903"],
@@ -955,7 +955,7 @@ const knowledgeOverrides: Record<string, TrickKnowledgeOverride> = {
     originNote:
       "ブレイキンでは 1990s / 2000s といった呼び名で、倒立系スピンのバリエーションとして知られています。名前の細かな由来には複数の語られ方があるため、ここでは高難度の handstand spin 系として整理しています。",
     practiceSteps: ["倒立支持と片手荷重を分けて作る", "低い回転練習で手首の負担を確認する", "縄内では回転場所と抜け方を固定する"],
-    commonMistakes: ["片手へ乗る前に腰が折れる", "回転数を急いで支持手が流れる"],
+    commonMistakes: ["片手へ乗る前に腰が折れる", "回転数を急いで支持手が流れる", "降りる方向を決めずに首や肩へ負担が集まる"],
     safetyNotes: ["手首、肩、首に違和感がある日は行わない", "十分な床スペースと補助者を確保する"],
     coachComment: "1990はチェックを埋めるために急ぐ技ではありません。倒立支持の質と安全条件がそろってから扱う高難度枠です。",
     knowledgeSourceUrls: ["https://en.wikipedia.org/wiki/Spin_(breakdancing_move)"],
@@ -1976,7 +1976,7 @@ function makeDescription(name: string, level: number, category: string, passCond
 function makeOriginNote(name: string, family: string, discipline: string) {
   const disciplineGuide = disciplineGuides[discipline];
   const familyGuide = familyGuides[family];
-  return `${name}の厳密な発祥・初出は監修時に追記します。現時点では、技名の由来を断定するよりも、どのジャンルの身体操作として読み解けるかを優先して整理しています。${
+  return `${name}は、現時点では個別の初出を断定せず、身体操作のルーツから読み解く技として整理しています。図鑑では名前の由来だけでなく、どのジャンルの文脈から来て、ダブルダッチの中でどう使いやすいかを重視します。${
     disciplineGuide?.roots ?? disciplineBridge(discipline)
   }${familyGuide?.roots ?? ""}${familyGuide?.ropeUse ?? ""}`;
 }
@@ -1994,13 +1994,15 @@ function makePracticeSteps(name: string, family: string, discipline: string) {
 }
 
 function makeCommonMistakes(family: string) {
-  if (family === "基礎ムーブ") return ["足順だけを追って上体が遅れる", "ロープを見る時間が長くなりリズムが止まる"];
-  if (family === "倒立・床基礎") return ["肩が抜けて腰が反る", "手を着く位置が近すぎて受け身が狭くなる"];
-  if (family === "側方・反発") return ["手の着地位置がずれて進行方向が曲がる", "着地で沈み込みすぎて次の反発が消える"];
-  if (family === "空中回転") return ["踏切前に急いで高さが出ない", "着地を見る前に体をほどいてしまう"];
-  if (family === "ひねり") return ["ひねり出しが早すぎて高さが落ちる", "目線と肩が開きすぎて着地方向がずれる"];
-  if (family === "ブレイキン・床回転") return ["支持点が流れて回転軸が大きくぶれる", "床との距離感が狭くなりロープに近づきすぎる"];
-  return ["入りのタイミングが毎回変わる", "成功後の抜け方まで決めていない"];
+  if (family === "基礎ムーブ") return ["足順だけを追って上体が遅れる", "ロープを見る時間が長くなりリズムが止まる", "終わり位置が曖昧で次の技へ入れない"];
+  if (family === "倒立・床基礎") return ["肩が抜けて腰が反る", "手を着く位置が近すぎて受け身が狭くなる", "降り方を決めずに崩れてしまう"];
+  if (family === "側方・反発") return ["手の着地位置がずれて進行方向が曲がる", "着地で沈み込みすぎて次の反発が消える", "胸の返しが遅れて縄内の向きへ戻れない"];
+  if (family === "空中回転") return ["踏切前に急いで高さが出ない", "着地を見る前に体をほどいてしまう", "回った後の一歩目が決まっておらずロープへ戻れない"];
+  if (family === "ひねり") return ["ひねり出しが早すぎて高さが落ちる", "目線と肩が開きすぎて着地方向がずれる", "前提技の回転軸が崩れたままひねりを足してしまう"];
+  if (family === "ブレイキン・床回転") return ["支持点が流れて回転軸が大きくぶれる", "床との距離感が狭くなりロープに近づきすぎる", "起き上がり方向を決めずに次の動きへ遅れる"];
+  if (family === "トリッキング") return ["入りのステップが大きくなり縄内の幅を使いすぎる", "蹴り足だけを急いで胸の向きが遅れる", "着地後の流れが止まり次のステップへつながらない"];
+  if (family === "連続・創作") return ["単体技の成功率が低いまま連続にしてしまう", "つなぎの足順や向きが毎回変わる", "山場の後にロープへ戻る出口を決めていない"];
+  return ["入りのタイミングが毎回変わる", "成功後の抜け方まで決めていない", "どの前提技に近いかを分解せずに練習してしまう"];
 }
 
 function makeSafetyNotes(family: string, level: number) {
@@ -2011,7 +2013,15 @@ function makeSafetyNotes(family: string, level: number) {
 }
 
 function makeCoachComment(family: string) {
-  return `監修メモ未設定。${family}系として、成功条件・補助方法・縄内での注意点を監修後に追記してください。`;
+  if (family === "基礎ムーブ") return "この系統は派手さより再現性です。入る位置、終わる位置、次の一歩を決めると、縄の中で急に使いやすくなります。";
+  if (family === "倒立・床基礎") return "倒立・床基礎は、できた回数より安全に戻れる形を優先してください。手首、肩、首に違和感が出る形は成功扱いにしない方が伸びます。";
+  if (family === "側方・反発") return "側方・反発系は、着地で力を失わないことが次の技への鍵です。単体で止まるだけでなく、次に何へ進むかまでセットで見ましょう。";
+  if (family === "空中回転") return "空中回転は、踏切、高さ、姿勢、着地を分けて見ると修正しやすくなります。縄内では着地後の一歩目まで成功条件にしてください。";
+  if (family === "ひねり") return "ひねり系は、前提技の高さと軸が残っている時だけ回転量を増やしましょう。早くひねるより、どこを向いて降りるかを決める方が安定します。";
+  if (family === "ブレイキン・床回転") return "床回転系は、見た目の勢いと同じくらい幅の管理が大事です。ロープに近づく方向と起き上がる方向を先に決めてください。";
+  if (family === "トリッキング") return "トリッキング系は、蹴り足だけでなく入りのステップと着地後の流れが見栄えを作ります。縄内では小さく入って大きく見せる意識が役立ちます。";
+  if (family === "連続・創作") return "連続・創作系は、難しい技を並べるより、つなぎの足順と向きが整理されている方が強く見えます。動画で出口まで確認しましょう。";
+  return "分類が曖昧な技ほど、前提技へ分解すると練習しやすくなります。名前よりも、入口、軸、着地、次の一歩を記録してください。";
 }
 
 export function getAllTricks(): Trick[] {
