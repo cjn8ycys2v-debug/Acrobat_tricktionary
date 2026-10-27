@@ -1,4 +1,4 @@
-import { allTricks, getFilterOptions, levelTests, mapPositions, sources, trickRelations } from "@/lib/atlas";
+import { allTricks, getFilterOptions, levelTests, mapPositions, seedMediaAssets, sources, trickRelations } from "@/lib/atlas";
 import { getSupabaseConfig } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { deriveDiscipline, sortDisciplines, sortFamilies } from "@/lib/taxonomy";
@@ -103,7 +103,7 @@ export function getSeedAtlasContent(): AtlasContent {
     levels: levelTests,
     relations: trickRelations,
     mapPositions,
-    mediaAssets: [],
+    mediaAssets: seedMediaAssets,
     options: getFilterOptions()
   };
 }

@@ -1,8 +1,17 @@
 import atlasData from "@/data/atlas-data.json";
+import videoReferenceData from "@/data/video-reference-data.json";
 import { deriveDiscipline, disciplineGuides, familyGuides, sortDisciplines, sortFamilies } from "@/lib/taxonomy";
-import type { AtlasData, LevelTest, Source, Trick, TrickMapPosition, TrickRelation } from "@/lib/types";
+import type { AtlasData, LevelTest, MediaAsset, Source, Trick, TrickMapPosition, TrickRelation } from "@/lib/types";
 
 const data = atlasData as AtlasData;
+const videoReferences = videoReferenceData as Array<{
+  trickName: string;
+  referenceUrl: string;
+  referenceStartSec: number;
+  referenceEndSec: number;
+  title: string;
+  channel: string;
+}>;
 
 export const sources: Source[] = data.sources;
 export const levelTests: LevelTest[] = data.levels;
@@ -2081,6 +2090,24 @@ export const allTricks = getAllTricks();
 const trickByName = new Map(allTricks.map((trick) => [trick.name, trick]));
 const trickBySlug = new Map(allTricks.map((trick) => [trick.slug, trick]));
 const sourceById = new Map(sources.map((source) => [source.id, source]));
+
+export const seedMediaAssets: MediaAsset[] = videoReferences.flatMap((reference, index) => {
+  const trick = trickByName.get(reference.trickName);
+  if (!trick) return [];
+  return [
+    {
+      id: `reference-video-${String(index + 1).padStart(3, "0")}`,
+      trickId: trick.id,
+      type: "video",
+      storagePath: "",
+      referenceUrl: reference.referenceUrl,
+      referenceStartSec: reference.referenceStartSec,
+      referenceEndSec: reference.referenceEndSec,
+      rightsNote: `参考閲覧用: ${reference.channel}「${reference.title}」。転載せず、自分で撮影した動画または許諾済み素材へ差し替えてください。`,
+      consentChecked: false
+    }
+  ];
+});
 
 export function getTrickBySlug(slug: string) {
   return trickBySlug.get(slug);

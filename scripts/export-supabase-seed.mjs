@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const data = JSON.parse(fs.readFileSync(path.join(process.cwd(), "data", "atlas-data.json"), "utf8"));
+const videoReferences = JSON.parse(fs.readFileSync(path.join(process.cwd(), "data", "video-reference-data.json"), "utf8"));
 
 const difficultyByLevel = new Map([
   [1, 1],
@@ -366,6 +367,15 @@ for (const level of data.levels) {
 for (const [index, relation] of data.relations.entries()) {
   lines.push(
     `insert into public.trick_relations (id, from_trick_id, to_trick_id, type, note, strength) values (${sql(`00000000-0000-4000-a000-${String(index + 1).padStart(12, "0")}`)}, ${sql(trickUuids.get(relation.from))}, ${sql(trickUuids.get(relation.to))}, ${sql(relation.type)}, ${sql(relation.note)}, ${relation.strength}) on conflict (from_trick_id, to_trick_id, type) do nothing;`
+  );
+}
+
+for (const [index, reference] of videoReferences.entries()) {
+  const trickId = trickUuids.get(reference.trickName);
+  if (!trickId) continue;
+  const rightsNote = `参考閲覧用: ${reference.channel}「${reference.title}」。転載せず、自分で撮影した動画または許諾済み素材へ差し替えてください。`;
+  lines.push(
+    `insert into public.media_assets (id, trick_id, type, storage_path, reference_url, reference_start_sec, reference_end_sec, rights_note, consent_checked) values (${sql(`00000000-0000-4000-b000-${String(index + 1).padStart(12, "0")}`)}, ${sql(trickId)}, 'video', '', ${sql(reference.referenceUrl)}, ${reference.referenceStartSec}, ${reference.referenceEndSec}, ${sql(rightsNote)}, false) on conflict (id) do update set reference_url = excluded.reference_url, reference_start_sec = excluded.reference_start_sec, reference_end_sec = excluded.reference_end_sec, rights_note = excluded.rights_note;`
   );
 }
 
