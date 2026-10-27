@@ -43,7 +43,7 @@ export default async function TrickDetailPage({
   const learningIncoming = incoming.filter(isLearningRelation);
   const learningOutgoing = outgoing.filter(isLearningRelation);
   const mediaAssets = atlas.mediaAssets.filter((asset) => asset.trickId === trick.id && asset.type === "video");
-  const primaryVideo = mediaAssets.find((asset) => asset.storagePath.trim() && asset.consentChecked);
+  const publishedVideos = mediaAssets.filter((asset) => asset.storagePath.trim() && asset.consentChecked);
   const source = trick.showSource ? atlas.sources.find((item) => item.id === trick.sourceId) : undefined;
   const disciplineGuide = disciplineGuides[trick.discipline];
   const familyGuide = familyGuides[trick.family];
@@ -142,8 +142,14 @@ export default async function TrickDetailPage({
 
         <aside className="grid min-w-0 gap-4 sm:gap-5">
           <section className="rounded border border-ink/10 bg-ink p-4 text-white shadow-sm sm:p-5">
-            {primaryVideo ? (
-              <VideoPanel asset={primaryVideo} />
+            {publishedVideos.length ? (
+              <div className="grid gap-4">
+                {publishedVideos.map((asset, index) => (
+                  <div key={asset.id} className={index ? "border-t border-white/12 pt-4" : ""}>
+                    <VideoPanel asset={asset} trickName={trick.name} index={index} total={publishedVideos.length} />
+                  </div>
+                ))}
+              </div>
             ) : (
               <div className="grid aspect-video place-items-center rounded border border-white/14 bg-white/8">
                 <div className="text-center">
@@ -391,7 +397,7 @@ function KnowledgeSources({ urls }: { urls: string[] }) {
   );
 }
 
-function VideoPanel({ asset }: { asset: MediaAsset }) {
+function VideoPanel({ asset, trickName, index, total }: { asset: MediaAsset; trickName: string; index: number; total: number }) {
   const meta = [
     asset.credit ? `撮影/提供: ${asset.credit}` : "",
     asset.duration !== undefined ? `動画: ${formatSeconds(asset.duration)}` : ""
@@ -399,7 +405,8 @@ function VideoPanel({ asset }: { asset: MediaAsset }) {
 
   return (
     <div>
-      <VideoFrame asset={asset} />
+      {total > 1 ? <p className="mb-2 text-xs font-black text-white/68">お手本動画 {index + 1}</p> : null}
+      <VideoFrame asset={asset} title={`${trickName} お手本動画${total > 1 ? ` ${index + 1}` : ""}`} />
       {meta.length ? (
         <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-white/72">
           {meta.map((item) => (
@@ -413,14 +420,14 @@ function VideoPanel({ asset }: { asset: MediaAsset }) {
   );
 }
 
-function VideoFrame({ asset }: { asset: MediaAsset }) {
+function VideoFrame({ asset, title }: { asset: MediaAsset; title: string }) {
   const youtubeSrc = youtubeEmbedSrc(asset.storagePath);
   if (youtubeSrc) {
     return (
       <iframe
         className="aspect-video w-full rounded border border-white/14 bg-black"
         src={youtubeSrc}
-        title="お手本動画"
+        title={title}
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
         allowFullScreen
       />

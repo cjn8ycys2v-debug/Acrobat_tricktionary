@@ -23,7 +23,17 @@ import {
 } from "lucide-react";
 import { AdminMapEditor } from "@/components/AdminMapEditor";
 import { RelationBulkEditor } from "@/components/RelationBulkEditor";
-import { formatReferenceRange, formatSeconds, isLikelyDirectVideoPath, parseTimecodeToSeconds, timedReferenceUrl, videoSrc, youtubeEmbedSrc } from "@/lib/media";
+import {
+  formatReferenceRange,
+  formatSeconds,
+  isEmbeddableVideoPath,
+  isLikelyDirectVideoPath,
+  isSameYoutubeVideo,
+  parseTimecodeToSeconds,
+  timedReferenceUrl,
+  videoSrc,
+  youtubeEmbedSrc
+} from "@/lib/media";
 import type { LevelTest, MediaAsset, Source, Trick, TrickMapPosition, TrickRelation } from "@/lib/types";
 import type { ReactNode } from "react";
 import { relationLabel } from "@/lib/utils";
@@ -1967,6 +1977,7 @@ function VideoReferenceEditor({
                       {state.kind === "ready" ? <CheckCircle2 aria-hidden className="size-3.5" /> : <Clock aria-hidden className="size-3.5" />}
                       {state.label}
                     </span>
+                    <p className="mt-2 text-xs font-semibold leading-5 text-graphite/68">次: {state.action}</p>
                   </div>
                   <button
                     type="button"
@@ -2119,31 +2130,54 @@ function VideoPreview({ asset }: { asset: MediaAsset }) {
 }
 
 function videoWorkflowState(asset: MediaAsset) {
-  if (asset.storagePath.trim() && asset.consentChecked) {
+  const publicSource = asset.storagePath.trim();
+  const referenceSource = asset.referenceUrl?.trim();
+
+  if (publicSource && isSameYoutubeVideo(publicSource, referenceSource)) {
+    return {
+      kind: "needsPublishUrl" as const,
+      label: "同一URL",
+      className: "border-coral/30 bg-coral/8 text-coral",
+      action: "参考URLと同じ動画です。自分の限定公開URLへ差し替える"
+    };
+  }
+  if (publicSource && !isEmbeddableVideoPath(publicSource)) {
+    return {
+      kind: "needsPublishUrl" as const,
+      label: "埋め込み不可",
+      className: "border-coral/30 bg-coral/8 text-coral",
+      action: "YouTubeの限定公開URLまたは直接再生できる動画URLへ差し替える"
+    };
+  }
+  if (publicSource && asset.consentChecked) {
     return {
       kind: "ready" as const,
       label: "埋め込みOK",
-      className: "border-pine/25 bg-skywash text-pine"
+      className: "border-pine/25 bg-skywash text-pine",
+      action: "技詳細ページで再生と表示を確認する"
     };
   }
-  if (asset.storagePath.trim()) {
+  if (publicSource) {
     return {
       kind: "needsConsent" as const,
       label: "確認待ち",
-      className: "border-saffron/45 bg-saffron/12 text-graphite"
+      className: "border-saffron/45 bg-saffron/12 text-graphite",
+      action: "撮影・出演・利用許諾を確認して公開OKにする"
     };
   }
-  if (asset.referenceUrl?.trim()) {
+  if (referenceSource) {
     return {
       kind: "needsPublishUrl" as const,
       label: "差し替え待ち",
-      className: "border-coral/30 bg-coral/8 text-coral"
+      className: "border-coral/30 bg-coral/8 text-coral",
+      action: "参考区間を見て、自分の限定公開URLへ差し替える"
     };
   }
   return {
     kind: "empty" as const,
     label: "未指定",
-    className: "border-ink/10 bg-white text-graphite/70"
+    className: "border-ink/10 bg-white text-graphite/70",
+    action: "参考URLまたは公開用URLを追加する"
   };
 }
 
@@ -2257,15 +2291,12 @@ function appendRows(current: string, rows: string[]) {
 }
 
 function videoWorkflowNextAction(asset: MediaAsset) {
-  const kind = videoWorkflowState(asset).kind;
-  if (kind === "ready") return "技詳細ページで再生と表示を確認";
-  if (kind === "needsConsent") return "撮影・出演・利用許諾を確認して公開OKにする";
-  if (kind === "needsPublishUrl") return "参考区間を見て、自分の限定公開URLへ差し替え";
-  return "参考URLまたは公開用URLを追加";
+  return videoWorkflowState(asset).action;
 }
 
 function videoWorkflowSteps(asset: MediaAsset) {
-  const kind = videoWorkflowState(asset).kind;
+  const state = videoWorkflowState(asset);
+  const kind = state.kind;
   if (kind === "ready") {
     return ["技詳細ページで再生できるか確認する", "必要ならクレジットや権利メモを整える"];
   }
@@ -2273,6 +2304,12 @@ function videoWorkflowSteps(asset: MediaAsset) {
     return ["公開用URLの動画が自分で使える素材か確認する", "出演・撮影・利用許諾を確認する", "公開利用確認にチェックしてDB保存する"];
   }
   if (kind === "needsPublishUrl") {
+    if (state.label === "同一URL") {
+      return ["参考動画をそのまま公開せず、使える素材を自分で撮影または許諾確認する", "自分のYouTubeへ限定公開でアップロードする", "新しいURLを公開用URLに貼る", "公開利用確認にチェックしてDB保存する"];
+    }
+    if (state.label === "埋め込み不可") {
+      return ["公開用URLがブラウザで直接再生できる形式か確認する", "自分のYouTube限定公開URLまたはStorage動画へ差し替える", "プレビュー再生を確認してDB保存する"];
+    }
     return ["参考区間を確認する", "自分で撮影または許諾済みの動画を限定公開でアップロードする", "再アップ後のURLを公開用URLに貼る", "公開利用確認にチェックしてDB保存する"];
   }
   return ["参考YouTube URLと秒数を追加する", "または自分の限定公開URLを公開用URLに貼る"];

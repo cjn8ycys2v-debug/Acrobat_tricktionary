@@ -10,11 +10,11 @@ export function videoSrc(storagePath: string) {
 export function youtubeEmbedSrc(url: string) {
   try {
     const parsed = new URL(url);
-    const host = parsed.hostname.replace(/^www\./, "");
-    const id = host === "youtu.be" ? parsed.pathname.slice(1).split("/")[0] : parsed.searchParams.get("v") ?? parseEmbedPath(parsed.pathname);
-    if (!id || (host !== "youtu.be" && !host.endsWith("youtube.com") && !host.endsWith("youtube-nocookie.com"))) return "";
+    const id = youtubeVideoId(url);
+    if (!id) return "";
 
-    const start = parseTimecodeToSeconds(parsed.searchParams.get("t") ?? parsed.searchParams.get("start")) ?? 0;
+    const hashParams = new URLSearchParams(parsed.hash.replace(/^#/, ""));
+    const start = parseTimecodeToSeconds(parsed.searchParams.get("t") ?? parsed.searchParams.get("start") ?? hashParams.get("t")) ?? 0;
     const end = parseTimecodeToSeconds(parsed.searchParams.get("end")) ?? 0;
     const params = new URLSearchParams({ rel: "0", modestbranding: "1" });
     if (start) params.set("start", String(start));
@@ -23,6 +23,32 @@ export function youtubeEmbedSrc(url: string) {
   } catch {
     return "";
   }
+}
+
+export function youtubeVideoId(url: string) {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
+    const isYouTubeHost = host === "youtu.be" || host === "youtube.com" || host.endsWith(".youtube.com") || host === "youtube-nocookie.com" || host.endsWith(".youtube-nocookie.com");
+    if (!isYouTubeHost) return "";
+
+    const id = host === "youtu.be" ? parsed.pathname.split("/").filter(Boolean)[0] : parsed.searchParams.get("v") ?? parseEmbedPath(parsed.pathname);
+    return id?.trim() ?? "";
+  } catch {
+    return "";
+  }
+}
+
+export function isSameYoutubeVideo(firstUrl: string | undefined, secondUrl: string | undefined) {
+  if (!firstUrl || !secondUrl) return false;
+  const firstId = youtubeVideoId(firstUrl);
+  const secondId = youtubeVideoId(secondUrl);
+  return Boolean(firstId && secondId && firstId === secondId);
+}
+
+export function isEmbeddableVideoPath(value: string) {
+  const source = value.trim();
+  return Boolean(source && (youtubeVideoId(source) || isLikelyDirectVideoPath(source)));
 }
 
 export function timedReferenceUrl(asset: Pick<MediaAsset, "referenceUrl" | "referenceStartSec" | "referenceEndSec">) {
@@ -67,7 +93,8 @@ export function parseTimecodeToSeconds(value: string | number | null | undefined
   if (/^https?:\/\//i.test(raw)) {
     try {
       const url = new URL(raw);
-      return parseTimecodeToSeconds(url.searchParams.get("t") ?? url.searchParams.get("start"));
+      const hashParams = new URLSearchParams(url.hash.replace(/^#/, ""));
+      return parseTimecodeToSeconds(url.searchParams.get("t") ?? url.searchParams.get("start") ?? hashParams.get("t"));
     } catch {
       return undefined;
     }
@@ -102,6 +129,6 @@ export function isLikelyDirectVideoPath(value: string) {
 
 function parseEmbedPath(pathname: string) {
   const parts = pathname.split("/").filter(Boolean);
-  const embedIndex = parts.findIndex((part) => part === "embed" || part === "shorts");
+  const embedIndex = parts.findIndex((part) => part === "embed" || part === "shorts" || part === "live" || part === "v");
   return embedIndex >= 0 ? parts[embedIndex + 1] : "";
 }
